@@ -1,25 +1,25 @@
-# AI/ML Club - [Project Title]
+# AI/ML Club - Agent37
 
-**Academic Year:** 2025-2026 Fall Semester  
-**Project Duration:** September 2025 - December 2025
+**Academic Year:** 2026-2027 Fall Semester  
+**Project Duration:** September 2026 - December 2026
 
 ## Project Description
 
-[Brief description of your project - 2-3 sentences explaining what the project aims to accomplish and its main objectives.]
+A Minecraft Harness for AI agents to learn new skills and imitate player examples
 
 **Key Objectives:**
-- [Objective 1]
-- [Objective 2]
-- [Objective 3]
-- [Objective 4]
+- AI can understand its position, control bot inputs, open inventory, and change perspectives in <250 ms. 
+- Observers can view and takeover the bot's control for imitation learning. 
+- AI can generate repeatable skills and improve them over time. 
+- Optional: ML pipeline for autonomous optimization
 
 ## Lead Contact Information
 
-**Project Lead:** [Lead Name]  
-📧 Email: [email@university.edu]  
-💼 LinkedIn: [LinkedIn Profile URL]  
-📱 Phone: [Phone Number]  
-🏢 Office Hours: [Days and Times], [Location]
+**Project Lead:** Ben Pham  
+📧 Email: ben.pham@sjsu.edu  
+💼 LinkedIn: https://www.linkedin.com/in/benpham3206/
+📱 Phone: (408) 461-7971  
+🏢 Office Hours: Monday/Wednesday: 10 AM - 2 PM, Saturday: 12 - 4 PM. Discord: bingbenbong
 
 **Faculty Advisor:** [Advisor Name]  
 📧 Email: [advisor.email@university.edu]  
@@ -59,10 +59,10 @@
 ## Quick Start Guide
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.10 or higher
 - Git
-- [Additional requirement 1]
-- [Additional requirement 2]
+- PyTorch
+- ONNX
 
 ### Installation Guide
 
@@ -90,7 +90,7 @@
 
 ## Technology Stack
 
-- **Programming Language:** [Primary Language]
+- **Programming Language:** JavaScript, Python
 - **ML/AI Libraries:** [Library 1], [Library 2], [Library 3]
 - **Development:** [Development Tools]
 - **Version Control:** Git & GitHub
