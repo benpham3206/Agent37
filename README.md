@@ -27,7 +27,7 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 
 | Name | Role | Email | GitHub |
 |------|------|-------|--------|
-| [Lead Name] | Project Lead & [Primary Role] | ben.pham@sjsu.edu | [@github-username](https://github.com/benpham3206) |
+| [Lead Name] | Project Lead & [Primary Role] | ben.pham@sjsu.edu | [@benpham3206](https://github.com/benpham3206/) |
 | [Member Name 2] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
 | [Member Name 3] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
 | [Member Name 4] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
