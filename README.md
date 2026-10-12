@@ -21,17 +21,13 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 📱 Phone: (408) 461-7971  
 🏢 Office Hours: Monday/Wednesday: 10 AM - 2 PM, Saturday: 12 - 4 PM. Discord: bingbenbong
 
-**Faculty Advisor:** [Advisor Name]  
-📧 Email: [advisor.email@university.edu]  
-🏢 Office: [Building Name, Room Number]
-
 ## Contributors
 
 *For detailed member information including LinkedIn profiles and Discord handles, see [docs/members.csv](docs/members.csv)*
 
 | Name | Role | Email | GitHub |
 |------|------|-------|--------|
-| [Lead Name] | Project Lead & [Primary Role] | [email@university.edu] | [@github-username](https://github.com/username) |
+| [Lead Name] | Project Lead & [Primary Role] | ben.pham@sjsu.edu | [@github-username](https://github.com/benpham3206) |
 | [Member Name 2] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
 | [Member Name 3] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
 | [Member Name 4] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
