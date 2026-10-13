@@ -100,7 +100,7 @@ Use this to work on your own laptop with your own server.
 
 7. **Accept the license.** Open `eula.txt` and change `eula=false` to **`eula=true`**.
 
-8. **Turn on offline mode.** Open `server.properties` and set **`online-mode=false`**. Offline mode lets bots join without a Minecraft account, so only use it on your own machine or a private network.
+8. **Turn on offline mode.** Open `server.properties` and set **`online-mode=false`**. Offline mode lets bots join without a Minecraft account, so only share the address with people you trust.
 
 9. **Start the server again** with the same command, and wait until it prints **Done**.
 
@@ -110,32 +110,32 @@ Use this to work on your own laptop with your own server.
 
 One person hosts the server and everyone else joins it. Do the local install first.
 
-Tailscale is a private network between your computers. Nothing is open to the internet.
+playit.gg gives your server a public address without changing your router. Offline mode means anyone with that address can join under any name, so keep it private.
 
 #### Host the shared server
 
-1. **Set up the server.** Follow steps 5–9 of the local install to get a 1.21.1 server running in offline mode.
-2. **Install Tailscale** from [tailscale.com/download](https://tailscale.com/download) and sign in.
-3. **Get your Tailscale address.** Run this and copy the number it prints:
-   ```bash
-   tailscale ip -4
-   ```
-4. **Let teammates in through Tailscale only.** On Windows, open **PowerShell as administrator** and run:
-   ```powershell
-   New-NetFirewallRule -DisplayName "Agent37 MC 25565" -Direction Inbound -Protocol TCP -LocalPort 25565 -RemoteAddress 100.64.0.0/10 -Action Allow
-   ```
-   This opens port 25565 to Tailscale addresses only, not the internet.
-5. **Share the machine.** In the [Tailscale admin console](https://login.tailscale.com/admin/machines), go to **Machines**, pick the server machine, click **Share**, and enter each teammate's email.
-6. **Send teammates your Tailscale address.** They'll use it with port `25565`.
+1. **Set up the server.** Follow steps 5–9 of the local install.
+2. **Get playit.** Download the playit agent from [playit.gg/download](https://playit.gg/download) and run it.
+3. **Claim it.** The agent opens a link. Sign in and claim the agent.
+4. **Add a tunnel.** In the playit dashboard, add a tunnel: **Minecraft Java**, local port `25565`.
+5. **Copy the address** it gives you (something like `something.joinmc.link`).
+6. **Share it only with teammates** in the team chat.
 
-The server is only up while your computer is on.
+**Turn on the whitelist** so only your team can join. In the server console, run:
+```
+whitelist on
+whitelist add <name>
+```
+
+Only tunnel the Minecraft server. Keep the bot control page and viewer off the tunnel.
+
+The server is only up while your computer and the playit agent are on.
 
 #### Join the shared server
 
-1. **Install Tailscale** from [tailscale.com/download](https://tailscale.com/download) and sign in with any account.
-2. **Accept the invite.** Open the share email from the host and click **Accept**.
-3. **Give your bot its own name.** Two bots with the same name can't be on the server at once.
-4. **Connect your bot** to the host's Tailscale address on port `25565`.
+1. **Get the address** from the host.
+2. **Give your bot its own name** and ask the host to whitelist it. Two bots with the same name can't be on the server at once.
+3. **Connect your bot** to that address.
 
 If the host's computer is off, use your local server.
 
@@ -143,7 +143,8 @@ If the host's computer is off, use your local server.
 
 | Problem | Try this |
 | --- | --- |
-| Can't connect to the shared server | Check that Tailscale is on and shows the host's computer. Then ask the host if the server is up. |
+| Can't connect to the shared server | Check the address. Ask the host if the server and playit are running. |
+| "You are not whitelisted on this server" | Ask the host to run `whitelist add <name>`. |
 | "Failed to verify username" | The server needs `online-mode=false` in `server.properties`. Restart it after changing. |
 | Bot name already taken | Someone else's bot has that name. Pick another one. |
 | Wrong version or protocol error | The server must be **1.21.1**. |
@@ -154,7 +155,7 @@ If the host's computer is off, use your local server.
 
 - **Programming Language:** JavaScript, Python
 - **ML/AI Libraries:** Mineflayer, prismarine-viewer, ONNX Runtime, PyTorch
-- **Development:** Node.js, npm, Tailscale, VS Code
+- **Development:** Node.js, npm, playit.gg, VS Code
 - **Version Control:** Git & GitHub
 
 ## License
