@@ -28,10 +28,10 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 | Name | Role | Email | GitHub |
 |------|------|-------|--------|
 | Ben Pham | Project Lead | ben.pham@sjsu.edu | [@benpham3206](https://github.com/benpham3206/) |
-| [Member Name 2] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
-| [Member Name 3] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
-| [Member Name 4] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
-| [Member Name 5] | [Role] | [email@university.edu] | [@github-username](https://github.com/username) |
+| Vikram Arunkumar | Member | vikram.arunkumar@sjsu.edu |  |
+| Thinh Nguyen | Member | thinh.nguyen02@sjsu.edu |  |
+| Joshua Yi | Member | joshua.yi01@sjsu.edu |  |
+| Roman Stetsenko | Member | roman.stetsenko@sjsu.edu |  |
 
 ## Project Kanban Board
 
