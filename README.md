@@ -112,6 +112,8 @@ One person hosts the server and everyone else joins it. Do the local install fir
 
 playit.gg gives your server a public address without changing your router. Offline mode means anyone with that address can join under any name, so keep it private.
 
+### Host:
+
 #### Host the shared server
 
 1. **Set up the server.** Follow steps 5–9 of the local install.
@@ -130,6 +132,8 @@ whitelist add <name>
 Only tunnel the Minecraft server. Keep the bot control page and viewer off the tunnel.
 
 The server is only up while your computer and the playit agent are on.
+
+### PLayers:
 
 #### Join the shared server
 
