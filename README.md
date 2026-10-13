@@ -89,12 +89,12 @@ Agent37/
 
 - **Programming Language:** JavaScript, Python
 - **ML/AI Libraries:** Mineflayer, prismarine-viewer, ONNX Runtime, PyTorch
-- **Development:** [Development Tools]
+- **Development:** Node.js, npm, Tailscale, VS Code
 - **Version Control:** Git & GitHub
 
 ## License
 
-This project is licensed under the [License Type] License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
