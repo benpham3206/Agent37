@@ -90,13 +90,13 @@ Use this to work on your own laptop with your own server.
    npm install
    ```
 
-5. **Get a Minecraft server.** Go to [minecraft.net/download/server](https://www.minecraft.net/en-us/download/server), pick version **1.21.1**, and save `server.jar` in its own folder.
+5. **Get a Minecraft server.** Make a new folder for it, then download the official 1.21.1 server jar from Mojang into that folder: [minecraft_server.1.21.1.jar](https://piston-data.mojang.com/v1/objects/59353fb40c36d304f2035d51e7d6e6baa98dc05c/server.jar). Rename it to `minecraft_server.1.21.1.jar` if your browser saves it as `server.jar`. The minecraft.net page only offers the newest version, which won't work with our bots.
 
 6. **Run it once.** In that folder, run:
-   ```bash
-   java -Xmx2G -jar server.jar nogui
    ```
-   It stops right away and creates some files. That's expected.
+   java -Xmx4G -Xms4G -jar minecraft_server.1.21.1.jar nogui
+   ```
+   It stops right away and creates `eula.txt`. That's expected. `-Xmx4G -Xms4G` gives the server 4 GB of memory; use `2G` if your computer has 8 GB or less.
 
 7. **Accept the license.** Open `eula.txt` and change `eula=false` to **`eula=true`**.
 
