@@ -80,11 +80,6 @@ Agent37/
    pip install -r requirements.txt
    ```
 
-4. **[Additional setup step]:**
-   ```bash
-   [command or instruction]
-   ```
-
 ## Technology Stack
 
 - **Programming Language:** JavaScript, Python
