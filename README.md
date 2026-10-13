@@ -35,7 +35,7 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 
 ## Project Kanban Board
 
-**🔗 Public Board:** [View our Kanban Board](https://github.com/aiml-club/[repo-name]/projects/1)
+**🔗 Public Board:** [Project Agent37](https://github.com/users/benpham3206/projects/2)
 
 ## Repository Structure
 
@@ -65,8 +65,8 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/aiml-club/[repo-name].git
-   cd [repo-name]
+   git clone https://github.com/benpham3206/Agent37.git
+   cd Agent37
    ```
 
 2. **Create virtual environment:**
