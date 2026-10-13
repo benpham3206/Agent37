@@ -133,7 +133,7 @@ Only tunnel the Minecraft server. Keep the bot control page and viewer off the t
 
 The server is only up while your computer and the playit agent are on.
 
-### PLayers:
+### Players:
 
 #### Join the shared server
 
