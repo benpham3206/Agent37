@@ -61,7 +61,9 @@ Agent37/
 - PyTorch
 - ONNX
 
-### Installation Guide
+### Local Install (solo)
+
+Use this to work on your own laptop with your own server.
 
 1. **Clone the repository:**
    ```bash
@@ -79,6 +81,24 @@ Agent37/
    ```bash
    pip install -r requirements.txt
    ```
+
+4. **Install Node packages:**
+   ```bash
+   npm install
+   ```
+
+5. **Run a local Minecraft 1.21.1 server** in offline mode, then start your bot pointed at `localhost:25565`.
+
+### Multiplayer Install (shared dev server)
+
+Use this to join the team server hosted on Ben's PC. Do the local install first.
+
+1. **Install Tailscale** from [tailscale.com/download](https://tailscale.com/download) and sign in.
+2. **Accept Ben's share invite** for the server machine.
+3. **Get the server address** from Ben (port `25565`).
+4. **Point your bot at that address** and give it your own name so it doesn't clash with other bots.
+
+The server is only up while Ben's PC is on. If it's down, use your local server.
 
 ## Technology Stack
 
