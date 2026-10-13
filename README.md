@@ -88,12 +88,9 @@ Agent37/
 ## Technology Stack
 
 - **Programming Language:** JavaScript, Python
-- **ML/AI Libraries:** [Library 1], [Library 2], [Library 3]
+- **ML/AI Libraries:** Mineflayer, prismarine-viewer, ONNX Runtime, PyTorch
 - **Development:** [Development Tools]
 - **Version Control:** Git & GitHub
-- **[Category]:** [Tools/Technologies]
-- **Database:** [Database Technology]
-- **Deployment:** [Deployment Platform/Tools]
 
 ## License
 
@@ -101,13 +98,11 @@ This project is licensed under the [License Type] License - see the [LICENSE](LI
 
 ## Acknowledgments
 
-- [Acknowledgment 1]
-- [Acknowledgment 2]
-- [Acknowledgment 3]
+- SJSU AI/ML Club
 
 ---
 
-**Last Updated:** [Date]  
+**Last Updated:** Oct 13, 2026  
 **Next Review:** [Date]
 
 ---
