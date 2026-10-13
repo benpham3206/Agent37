@@ -40,7 +40,7 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 ## Repository Structure
 
 ```
-[project-repo-name]/
+Agent37/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
