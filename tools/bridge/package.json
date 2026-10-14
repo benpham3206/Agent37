@@ -1,0 +1,11 @@
+{
+  "name": "agent37-bridge-tools",
+  "private": true,
+  "type": "module",
+  "description": "Launcher, status/chat HUD, team proxy and replay tools for the Agent-37 combat bridge",
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "mineflayer": "^4.39.0",
+    "prismarine-viewer": "^1.33.0"
+  }
+}
