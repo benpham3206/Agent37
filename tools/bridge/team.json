@@ -1,0 +1,8 @@
+﻿[
+  { "path": "ben",    "bot": "Ben_bot",    "control": 8771, "viewer": 3011, "status": 8781 },
+  { "path": "vikram", "bot": "Vikram_bot", "control": 8772, "viewer": 3012, "status": 8782 },
+  { "path": "thinh",  "bot": "Thinh_bot",  "control": 8773, "viewer": 3013, "status": 8783 },
+  { "path": "joshua", "bot": "Joshua_bot", "control": 8774, "viewer": 3014, "status": 8784 },
+  { "path": "roman",  "bot": "Roman_bot",  "control": 8775, "viewer": 3015, "status": 8785 },
+  { "path": "replay", "bot": "ReplayBot",  "control": 8765, "viewer": 3009, "status": 8766 }
+]
