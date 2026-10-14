@@ -96,8 +96,34 @@ const { createRuntime } = await import(pathToFileURL(src).href);
 // One process per bot. Settings come from env (defaults = the original ReplayBot setup).
 const E = process.env;
 const BOT = E.A37_BOT || 'ReplayBot', WEB = +(E.A37_WEB_PORT || 8765), VIEW = +(E.A37_VIEWER_PORT || 3009), STAT = +(E.A37_STATUS_PORT || 8766);
+// HUD on the direct control page too: wrap the bridge's own HTTP server (only the one created inside createRuntime)
+// so /status, /chat, /hud.js go to this bot's status port and the page HTML gets the HUD script.
+const origCreate = http.createServer; let wrapBridge = true;
+http.createServer = function (...args) {
+  const i = args.findIndex(a => typeof a === 'function');
+  if (wrapBridge && i >= 0 && typeof args[i].use !== 'function') {
+    const handler = args[i];
+    args[i] = (req, res) => {
+      const path = req.url.split('?')[0];
+      if (/^\/(status|chat|hud\.js)$/.test(path)) {
+        const up = http.request({ host: '127.0.0.1', port: STAT, method: req.method, path: req.url, headers: req.headers }, r => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
+        up.on('error', () => { res.writeHead(502); res.end('status down'); }); return req.pipe(up);
+      }
+      if (path === '/' || path === '/index.html') {
+        const end = res.end.bind(res), write = res.write.bind(res), chunks = [];
+        res.write = c => { chunks.push(Buffer.from(c)); return true; };
+        res.end = (c, ...r) => { if (c) chunks.push(Buffer.from(c)); let body = Buffer.concat(chunks).toString('utf8');
+          if (!body.includes('/hud.js')) body = body.replace('</body>', '<script src="/hud.js"></script></body>');
+          if (!res.headersSent) res.removeHeader('content-length'); return end(body); };
+      }
+      return handler(req, res);
+    };
+  }
+  return origCreate.apply(this, args);
+};
 await createRuntime({ host: E.A37_MC_HOST || 'localhost', port: +(E.A37_MC_PORT || 25565), username: BOT, webPort: WEB, viewerPort: VIEW,
   dataDir: E.A37_DATA_DIR || new URL(`./bridge-data/${BOT}`, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), session: 'devserver-test', target: 'zombie', environment: 'open_surface' });
+wrapBridge = false; http.createServer = origCreate;
 serveStatus(() => currentBot, STAT);
 console.log(`${BOT}: control http://localhost:${WEB}  viewer http://localhost:${VIEW}  status http://localhost:${STAT}/status`);
 

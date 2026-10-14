@@ -48,7 +48,10 @@ const server = http.createServer((req, res) => {
                    .replace('`${protocol}//${location.host}/control`', '`${protocol}//${location.host}' + P + '/control`');
       } else {
         body = body.replace('href="/style.css"', `href="${P}/style.css"`).replace('src="/app.js"', `src="${P}/app.js"`)
-                   .replace('</body>', `<script>window.A37_PREFIX=${JSON.stringify(P)}</script><script src="${P}/hud.js"></script></body>`);
+                   ;
+        // the bridge page may already carry /hud.js (added by the launcher); prefix it instead of adding a second one
+        const hud = `<script>window.A37_PREFIX=${JSON.stringify(P)}</script><script src="${P}/hud.js"></script>`;
+        body = body.includes('<script src="/hud.js"></script>') ? body.replace('<script src="/hud.js"></script>', hud) : body.replace('</body>', hud + '</body>');
       }
       const h = { ...u.headers }; delete h['content-length']; delete h.etag; h['cache-control'] = 'no-store';
       res.writeHead(u.statusCode, h); res.end(body);

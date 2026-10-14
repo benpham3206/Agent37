@@ -26,7 +26,7 @@ Press T or Enter to chat as the bot.
   - left click attacks the entity under the crosshair, and holding it digs blocks
   - hops up 1-block steps
   - skips Agent-37's ledge guard while a person drives (combat skills keep it)
-- `status.mjs` serves `/status` (health, food, armor, inventory, chat) and `/chat`, plus the HUD the proxy adds to the page.
+- `status.mjs` serves `/status` (health, food, armor, inventory, chat) and `/chat`, plus the HUD. The HUD shows on the direct control page (http://localhost:<control port>) and through the proxy.
 - `share-viewer.mjs` is the proxy on 127.0.0.1:8800. It serves `/` (a list of bots) and `/<path>/` for each bot's control page, viewer and status. Each bot gets its own login.
 - `team.json` lists the bots and their ports.
 - `start-team.ps1` and `stop-team.ps1` start or stop every bot and the proxy. If a bot gets kicked, it restarts after 10 s.
