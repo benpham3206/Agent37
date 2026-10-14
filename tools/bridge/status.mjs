@@ -94,7 +94,7 @@ const HUD = `(() => {
       h += 'hotbar<div class=grid>'; for (let i = 36; i <= 44; i++) h += cell(by[i], i - 36 === s.quick_bar_slot); h += '</div>main<div class=grid>';
       for (let i = 9; i <= 35; i++) h += cell(by[i]); h += '</div>offhand: ' + (s.offhand ? short(s.offhand.name) : '-');
       el.innerHTML = h;
-      const lines = (s.chat || []).map(m => new Date(m.ts).toLocaleTimeString() + ' ' + (m.sender ? '<' + m.sender + '> ' : '') + m.text).join('\\n');
+      const lines = (s.chat || []).map(m => new Date(m.ts).toLocaleTimeString() + ' ' + (m.sender && !m.text.startsWith('<' + m.sender + '>') ? '<' + m.sender + '> ' : '') + m.text).join('\\n');
       if (lines !== lastChat) { const atBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 5; chat.innerHTML = esc(lines); lastChat = lines; if (atBottom) chat.scrollTop = chat.scrollHeight; }
     } catch { el.textContent = 'status unavailable'; }
   }
