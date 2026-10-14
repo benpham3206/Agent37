@@ -1,0 +1,36 @@
+# Bridge tools
+
+Run Agent-37 combat-bridge bots on the dev server, one per teammate, and share them through one password-protected page.
+
+The bridge itself lives in Agent-37 (`bridge/server.js`). These tools wrap it without changing it.
+
+## What's here
+
+- `run-agent37-bridge.mjs` starts one bridge bot. It adds:
+  - sprint while W is held, so there's no Ctrl+W
+  - mouse look at 1.3x, with pitch kept between straight up and straight down
+  - left click attacks the entity under the crosshair, and holding it digs blocks
+  - hops up 1-block steps
+  - skips Agent-37's ledge guard while a person drives (combat skills keep it)
+- `status.mjs` serves `/status` (health, food, armor, inventory, chat) and `/chat`, plus the HUD the proxy adds to the page.
+- `share-viewer.mjs` is the proxy on 127.0.0.1:8800. It serves `/` (a list of bots) and `/<path>/` for each bot's control page, viewer and status. Each bot gets its own login.
+- `team.json` lists the bots and their ports.
+- `start-team.ps1` and `stop-team.ps1` start or stop every bot and the proxy. If a bot gets kicked, it restarts after 10 s.
+- `replay.mjs` replays a recorded combat log. `stats.mjs` summarizes logs. `bus.mjs` lets bots message each other.
+
+## Setup (Windows)
+
+1. Install Agent-37's bridge (`cd bridge`, then `npm install`).
+2. In this folder, run `npm install`.
+3. Copy `bridge.env.example` to `bridge.env` and set `A37_BRIDGE_SERVER`.
+4. Copy `share-viewer.env.example` to `share-viewer.env` and set the passwords.
+5. Add each bot name in `team.json` to the server whitelist, then run `/whitelist reload` in game.
+6. Run `powershell -ExecutionPolicy Bypass -File .\start-team.ps1`.
+
+To share outside the PC, point a tunnel at `http://127.0.0.1:8800`, for example `cloudflared tunnel --url http://127.0.0.1:8800`. Only give each teammate their own login.
+
+## Notes
+
+- If two people drive the same bot, they override each other.
+- Anyone with a bot's login can drive it and chat as it.
+- `*.env`, `logs/` and `bridge-data/` are git-ignored.
