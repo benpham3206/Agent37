@@ -4,6 +4,20 @@ Run Agent-37 combat-bridge bots on the dev server, one per teammate, and share t
 
 The bridge itself lives in Agent-37 (`bridge/server.js`). These tools wrap it without changing it.
 
+## Screenshots
+
+![Control page with HUD](../../docs/images/bridge/1-ben-bot-control-hud.png)
+
+The control page: first-person view, HUD (health, food, armor, inventory) top-left, chat bottom-left.
+
+![Team bot index](../../docs/images/bridge/2-proxy-index-admin.png)
+
+The proxy's index of team bots.
+
+![HUD chat](../../docs/images/bridge/3-hud-chat-after-send.png)
+
+Press T or Enter to chat as the bot.
+
 ## What's here
 
 - `run-agent37-bridge.mjs` starts one bridge bot. It adds:
