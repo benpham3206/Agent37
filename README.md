@@ -42,22 +42,22 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 ```
 Agent37/
 ├── README.md
-├── requirements.txt
 ├── .gitignore
 ├── LICENSE
+├── bridge/                     # Core Agent-37 bridge: server.js, arbiter.js, public/ control UI
+├── contracts/policy.json       # Shared policy feature contract (used by bridge tests)
+├── tools/bridge/               # Launcher, status/inventory/armor HUD, team proxy, start/stop-team.ps1
 ├── docs/
 │   ├── members.csv             # Team member details with LinkedIn & Discord
 │   ├── info.json               # Project metadata for website automation
 │   ├── thumbnail.webp          # Project thumbnail image
 │   └── pitch_slides.pdf        # Project presentation slides
-└── [additional_folder]/
 ```
 
 ## Quick Start Guide
 
 ### What you need
 
-- **Python 3.10 or newer**, for the ML code.
 - **Node.js (LTS)**, which runs the bots.
 - **Git**, to download the code.
 - **Java 21**, only if you run your own Minecraft server.
@@ -74,21 +74,17 @@ Use this to work on your own laptop with your own server.
    cd Agent37
    ```
 
-2. **Make a Python environment.** This keeps the project's Python packages separate from the rest of your computer:
+2. **Install the bridge's Node packages:**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   cd bridge && npm install && cd ..
    ```
 
-3. **Install the Python packages:**
+3. **Install the tools' Node packages:**
    ```bash
-   pip install -r requirements.txt
+   cd tools/bridge && npm install && cd ../..
    ```
 
-4. **Install the Node packages**, which the bots need:
-   ```bash
-   npm install
-   ```
+4. **(Optional) Settings.** Copy `tools/bridge/bridge.env.example` to `bridge.env` and `share-viewer.env.example` to `share-viewer.env`, then fill in your own values. Never commit `.env` files. If `A37_BRIDGE_SERVER` is unset, the launcher uses the in-repo `bridge/server.js`.
 
 5. **Get a Minecraft server.** Make a new folder for it, then download the official 1.21.1 server jar from Mojang into that folder: [minecraft_server.1.21.1.jar](https://piston-data.mojang.com/v1/objects/59353fb40c36d304f2035d51e7d6e6baa98dc05c/server.jar). Rename it to `minecraft_server.1.21.1.jar` if your browser saves it as `server.jar`. The minecraft.net page only offers the newest version, which won't work with our bots.
 
@@ -104,7 +100,7 @@ Use this to work on your own laptop with your own server.
 
 9. **Start the server again** with the same command, and wait until it prints **Done**.
 
-10. **Start your bot** (see the bot's folder) and point it at `localhost:25565`.
+10. **Start the bots.** On Windows, run `tools/bridge/start-team.ps1` (one bot per entry in `team.json`, plus the team proxy on `127.0.0.1:8800`). Stop them with `stop-team.ps1`. To run one bot: `cd tools/bridge && node run-agent37-bridge.mjs`. Each bot's control page and HUD (inventory, armor, chat) stay on localhost.
 
 ### Multiplayer Install (shared dev server)
 
@@ -157,8 +153,8 @@ If the host's computer is off, use your local server.
 
 ## Technology Stack
 
-- **Programming Language:** JavaScript, Python
-- **ML/AI Libraries:** Mineflayer, prismarine-viewer, ONNX Runtime, PyTorch
+- **Programming Language:** JavaScript
+- **Libraries:** Mineflayer, prismarine-viewer, ONNX Runtime (optional)
 - **Development:** Node.js, npm, playit.gg, VS Code
 - **Version Control:** Git & GitHub
 

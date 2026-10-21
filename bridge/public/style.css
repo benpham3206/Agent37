@@ -1,0 +1,32 @@
+:root { color-scheme: dark; font: 14px system-ui, sans-serif; background: #101318; color: #e8edf2; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #101318; }
+.shell { display: grid; grid-template-columns: minmax(480px, 1fr) 280px; height: 100vh; gap: 12px; padding: 12px; }
+.viewer-wrap { position: relative; min-height: 360px; overflow: hidden; border: 1px solid #303943; border-radius: 8px; background: #000; }
+#viewer, #overlay { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+#overlay { z-index: 2; cursor: crosshair; }
+.start-hint { position: absolute; z-index: 3; top: 12px; left: 50%; transform: translateX(-50%); padding: 6px 10px; border-radius: 4px; background: #111c; color: #d7e4ef; pointer-events: none; }
+.connection { position: absolute; z-index: 4; right: 10px; top: 10px; padding: 4px 7px; border-radius: 4px; background: #5a2424dd; color: #ffd6d6; pointer-events: none; }
+.connection.live { background: #194a2bdd; color: #c4ffd5; }
+.threat { position:absolute; z-index:4; left:10px; bottom:10px; padding:7px 10px; border-radius:4px; background:#18202add; color:#b8c4cf; font-weight:700; pointer-events:none; }
+.threat.swing { background:#72580bdd; color:#fff2a8; }
+.threat.hit { background:#7a1f1fdd; color:#fff; }
+.panel { padding: 14px; border: 1px solid #303943; border-radius: 8px; background: #171c22; overflow: auto; }
+h1 { margin: 0; font-size: 18px; } header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px; }
+label { display: block; color: #aebdcc; } select { width: 100%; margin-top: 6px; padding: 7px; border: 1px solid #485464; border-radius: 4px; background: #0d1116; color: inherit; }
+.badge { padding: 3px 6px; border-radius: 4px; background: #303943; font-size: 11px; }
+.header-badges { display:flex; gap:6px; align-items:center; }
+.badge.hitboxes { color:#55e68a; border:1px solid #55e68a88; }
+.stats { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 18px 0; } .stats div, .session { padding: 8px; border-radius: 4px; background:#0d1116; color:#98a8b7; } b { display:block; margin-top: 2px; color:#eef4f8; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.session { display:grid; gap: 7px; margin-bottom: 12px; } .session b { display:inline; margin-left: 4px; }
+button { padding: 7px 8px; border: 1px solid #465464; border-radius: 4px; background: #242e39; color: inherit; cursor:pointer; } button:hover { background:#344353; } button:active { background:#48627c; }
+.drive { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin:0 0 12px; }
+.drive span { grid-column:1/-1; color:#aebdcc; }
+.drive button { min-width:0; padding:6px 3px; font-size:12px; }
+.imitation { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 12px; padding:8px; border:1px solid #38516a; border-radius:4px; background:#111923; }
+.imitation span { color:#aebdcc; }
+.imitation b { text-align:right; margin:0; color:#7ed8ff; }
+.imitation button:last-child { grid-column:1/-1; }
+.recording { display:grid; grid-template-columns: 1fr 1fr; gap: 6px; } .labels { display:flex; flex-wrap:wrap; gap: 6px; align-items:center; margin-top: 16px; color:#aebdcc; } .labels span { width:100%; }
+.help { margin: 18px 0 0; color:#8493a1; line-height: 1.45; } .error { min-height: 20px; margin-top: 12px; color:#ffaaa7; }
+@media (max-width: 800px) { .shell { grid-template-columns: 1fr; grid-template-rows: minmax(350px, 65vh) auto; height:auto; min-height:100vh; } }

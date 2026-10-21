@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Agent-37 Combat Teacher</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="viewer-wrap" aria-label="Minecraft first-person view">
+      <iframe id="viewer" title="Minecraft first-person view" allow="pointer-lock" tabindex="-1"></iframe>
+      <canvas id="overlay" aria-label="Target hitbox overlay"></canvas>
+      <div id="start-hint" class="start-hint">Click the view to capture the mouse · Esc releases it</div>
+      <div id="threat" class="threat quiet">Incoming: quiet</div>
+      <div id="connection" class="connection">Connecting…</div>
+    </section>
+    <aside class="panel">
+      <header><h1>Combat teacher</h1><span class="header-badges"><span id="hitboxes" class="badge hitboxes">Hitboxes ON</span><span id="arbiter" class="badge">idle</span></span></header>
+      <label>Target <select id="target"><option>zombie</option><option>skeleton</option><option>enderman</option><option>blaze</option><option>phantom</option><option value="player">6ento (teacher-only sparring)</option><option>other</option></select></label>
+      <div class="stats"><div>HP <b id="health">—</b></div><div>Target <b id="target-health">—</b></div><div>Distance <b id="distance">—</b></div><div>Tracked <b id="tracked">no</b></div><div>LOS / in view <b id="los">—</b></div><div>Incoming <b id="incoming">quiet</b></div><div>Last hit <b id="last-hit">—</b></div><div>State <b id="recording">idle</b></div></div>
+      <div class="drive" aria-label="Accessible teacher controls">
+        <span>Teacher controls</span>
+        <button data-drive="turn-left" title="Turn left 12 degrees">Turn ↶</button><button data-drive="forward" title="Sprint forward for 0.8 seconds">Approach</button><button data-drive="turn-right" title="Turn right 12 degrees">Turn ↷</button>
+        <button data-drive="left" title="Strafe left for 0.6 seconds">Strafe ←</button><button data-drive="back" title="Move backward for 0.6 seconds">Back</button><button data-drive="right" title="Strafe right for 0.6 seconds">Strafe →</button>
+        <button data-drive="shield" title="Raise shield for 0.8 seconds">Shield</button><button data-drive="attack" title="Attack once">Attack</button><button data-drive="jump" title="Jump forward">Jump</button>
+      </div>
+      <div class="imitation" aria-label="Luna imitation controls">
+        <span>Luna imitation</span><b id="imitation-status">idle</b>
+        <button data-imitation="observe" title="Observe 6ento for up to 20 seconds">Observe me</button><button data-imitation="stop">Stop</button><button data-imitation="mimic" title="Replay the last inferred movement and swing sequence locally">Mimic last demo</button>
+      </div>
+      <div class="session"><div>Session <b id="session">—</b></div><div>Encounter <b id="encounter">—</b></div></div>
+      <div class="recording">
+        <button data-record="start" title="Start a new encounter, or start recording">Start / New encounter</button><button data-record="pause">Pause</button><button data-record="resume" title="Resume in a new encounter file">Resume / New encounter</button><button data-record="stop">Stop</button>
+      </div>
+      <div class="labels"><span>Mark encounter:</span><button data-label="good">Good</button><button data-label="bad">Bad</button><button data-label="excluded">Exclude</button></div>
+      <p class="help">Click the view to drive Agent37 directly: WASD moves, Ctrl toggles sprint, Shift sneaks, Space jumps, left click attacks, right click uses the held item, and 1–9 selects the hotbar. Esc stops and releases control. Manual buttons work without mouse capture.</p>
+      <p class="help">Hitbox overlay is always enabled for the selected target: green means unobstructed and inside the agent's view; red means tracked but unseen. Incoming turns yellow on a target swing and red when the agent takes damage. Unknown values appear as —.</p>
+      <div id="error" class="error" role="status"></div>
+    </aside>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

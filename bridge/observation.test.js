@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { buildTerrainObservation } from './observation.js';
+function fakeBot(yaw=0){return {entity:{position:{x:10,y:5,z:10},yaw},game:{dimension:'minecraft:the_nether'},blockAt(p){return {name:`stone_${p.x}_${p.z}`,boundingBox:'block'};}};}
+test('terrain support grid rotates with local forward/right',()=>{const o=buildTerrainObservation(fakeBot(Math.PI/2));assert.equal(o.support_grid.length,3);assert.equal(o.support_grid[1].length,3);assert.equal(o.support_grid[1][2].support,'stone_10_9');});
+test('unavailable chunks become explicit unknowns',()=>{const b=fakeBot();b.blockAt=()=>null;const o=buildTerrainObservation(b,{environmentLabel:'underground'});assert.equal(o.environment_label,'underground');assert.equal(o.support_grid[1][1].available,false);assert.equal(o.hazards.void,true);assert.equal(o.clearance.forward.available,false);});
