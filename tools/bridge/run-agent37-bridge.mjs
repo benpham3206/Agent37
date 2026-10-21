@@ -1,13 +1,13 @@
-﻿// Runs the original Agent-37 combat bridge (unmodified) on the dev server, localhost only, with sprint on by default.
+﻿// Runs the original Agent-37 combat bridge (in-repo copy at bridge/) on the dev server, localhost only, with sprint on by default.
 import http from 'http';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { serveStatus, attachChat } from './status.mjs';
 const listen = http.Server.prototype.listen; // prismarine-viewer binds every interface; pin to 127.0.0.1
 http.Server.prototype.listen = function (port, ...rest) { return typeof port === 'number' ? listen.call(this, port, '127.0.0.1', ...rest) : listen.call(this, port, ...rest); };
-// Path to the Agent-37 combat bridge (bridge/server.js). Required.
-const src = process.env.A37_BRIDGE_SERVER;
-if (!src) { console.error('set A37_BRIDGE_SERVER to the path of Agent-37 bridge/server.js'); process.exit(1); }
+// Path to the Agent-37 combat bridge (bridge/server.js). Defaults to the in-repo copy at ../../bridge/server.js.
+const src = process.env.A37_BRIDGE_SERVER || fileURLToPath(new URL('../../bridge/server.js', import.meta.url));
+process.env.A37_BRIDGE_SERVER = src;
 
 // Sprint by default. The page only sends sprint while Ctrl is held, and the bridge re-sets every control
 // (sprint=false included) 20x a second, so wrap setControlState once mineflayer's plugins have loaded.

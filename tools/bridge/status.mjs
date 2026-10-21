@@ -118,7 +118,7 @@ export function serveStatus(getBot, port = 8766) {
     if (req.url.startsWith('/hud.js')) { res.writeHead(200, { 'content-type': 'text/javascript', 'cache-control': 'no-store' }); return res.end(HUD); }
     if (req.url === '/kit' && req.method === 'POST') {
       try {
-        const Item = (await import('module')).createRequire(process.env.A37_BRIDGE_SERVER)('prismarine-item')(bot.version);
+        const Item = (await import('module')).createRequire(process.env.A37_BRIDGE_SERVER || new URL('../../bridge/server.js', import.meta.url))('prismarine-item')(bot.version);
         const id = n => bot.registry.itemsByName[n].id;
         const put = (slot, name, count = 1, used = 0) => { const it = new Item(id(name), count); if (used) it.durabilityUsed = used; return bot.creative.setInventorySlot(slot, it); };
         await put(5, 'iron_helmet', 1, 40); await put(6, 'diamond_chestplate'); await put(7, 'iron_leggings', 1, 100); await put(8, 'leather_boots', 1, 10);

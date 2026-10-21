@@ -1,9 +1,9 @@
 ﻿# Starts one Agent-37 bridge per bot in team.json (each in its own restart loop) plus the team proxy.
 # Any tunnel (e.g. cloudflared pointed at 127.0.0.1:8800) is not touched.
 $dir = $PSScriptRoot; New-Item -ItemType Directory -Force "$dir\logs" | Out-Null
-# Settings such as A37_BRIDGE_SERVER come from bridge.env (copy bridge.env.example). Child processes inherit them.
+# Settings such as A37_BRIDGE_SERVER come from bridge.env (copy bridge.env.example). Child processes inherit them. bridge.env is optional.
 if (Test-Path "$dir\bridge.env") { Get-Content "$dir\bridge.env" | Where-Object { $_ -match '^\s*[A-Z0-9_]+=' } | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item "env:$($k.Trim())" $v.Trim() } }
-if (-not $env:A37_BRIDGE_SERVER) { throw 'Set A37_BRIDGE_SERVER in bridge.env' }
+# Unset A37_BRIDGE_SERVER means the launcher uses the in-repo bridge (..\..\bridge\server.js).
 $team = Get-Content "$dir\team.json" -Raw | ConvertFrom-Json
 foreach ($t in $team) {
   $loop = "Set-Location '$dir'; `$env:A37_BOT='$($t.bot)'; `$env:A37_WEB_PORT='$($t.control)'; `$env:A37_VIEWER_PORT='$($t.viewer)'; `$env:A37_STATUS_PORT='$($t.status)'; " +
