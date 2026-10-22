@@ -43,6 +43,14 @@ Press T or Enter to chat as the bot.
 
 To share outside the PC, point a tunnel at `http://127.0.0.1:8800`, for example `cloudflared tunnel --url http://127.0.0.1:8800`. Only give each teammate their own login.
 
+## Creative/Survival toggle
+
+Each bot's control page shows the bot's current mode and a **Switch to creative / Switch to survival** button.
+
+- **Host setup:** enable RCON in the Minecraft server's `server.properties` (`enable-rcon=true`, a strong `rcon.password`), then set `A37_SERVER_DIR` in `bridge.env` to the server folder. Or set `A37_RCON_HOST` / `A37_RCON_PORT` / `A37_RCON_PASSWORD` directly. Never commit the password.
+- **Off by default:** with no RCON settings, the button is greyed out with "Host has not enabled mode switching".
+- **Safety:** the button only ever changes that page's own bot (the bridge uses its own username, never one sent from the browser), only to creative or survival, at most once every 3 seconds. The RCON password stays on the host and never reaches the browser.
+
 ## Notes
 
 - If two people drive the same bot, they override each other.

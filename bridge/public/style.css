@@ -30,3 +30,4 @@ button { padding: 7px 8px; border: 1px solid #465464; border-radius: 4px; backgr
 .recording { display:grid; grid-template-columns: 1fr 1fr; gap: 6px; } .labels { display:flex; flex-wrap:wrap; gap: 6px; align-items:center; margin-top: 16px; color:#aebdcc; } .labels span { width:100%; }
 .help { margin: 18px 0 0; color:#8493a1; line-height: 1.45; } .error { min-height: 20px; margin-top: 12px; color:#ffaaa7; }
 @media (max-width: 800px) { .shell { grid-template-columns: 1fr; grid-template-rows: minmax(350px, 65vh) auto; height:auto; min-height:100vh; } }
+.gamemode{display:flex;gap:8px;align-items:center}.gamemode button{margin-left:auto}.gamemode button:disabled{opacity:.5;cursor:not-allowed}
