@@ -3,6 +3,8 @@ import http from 'http';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { serveStatus, attachChat } from './status.mjs';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 const listen = http.Server.prototype.listen; // prismarine-viewer binds every interface; pin to 127.0.0.1
 http.Server.prototype.listen = function (port, ...rest) { return typeof port === 'number' ? listen.call(this, port, '127.0.0.1', ...rest) : listen.call(this, port, ...rest); };
 // Path to the Agent-37 combat bridge (bridge/server.js). Defaults to the in-repo copy at ../../bridge/server.js.
@@ -95,6 +97,15 @@ ActionArbiter.prototype.tick = function (args = {}) {
 const { createRuntime } = await import(pathToFileURL(src).href);
 // One process per bot. Settings come from env (defaults = the original ReplayBot setup).
 const E = process.env;
+// Mode switching (Creative/Survival toggle): if the host set A37_SERVER_DIR and no A37_RCON_PASSWORD, read RCON settings
+// from that server's server.properties. The password is never logged.
+if (E.A37_SERVER_DIR && !E.A37_RCON_PASSWORD) {
+  try {
+    const props = Object.fromEntries(readFileSync(join(E.A37_SERVER_DIR, 'server.properties'), 'utf8').split(/\r?\n/).filter(l => l.includes('=') && !l.startsWith('#')).map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]));
+    if (props['enable-rcon'] === 'true' && props['rcon.password']) { E.A37_RCON_PASSWORD = props['rcon.password']; E.A37_RCON_PORT ||= props['rcon.port'] || '25575'; }
+    else console.log('mode switching off: RCON is not enabled in server.properties');
+  } catch { console.log('mode switching off: could not read server.properties in A37_SERVER_DIR'); }
+}
 const BOT = E.A37_BOT || 'ReplayBot', WEB = +(E.A37_WEB_PORT || 8765), VIEW = +(E.A37_VIEWER_PORT || 3009), STAT = +(E.A37_STATUS_PORT || 8766);
 // HUD on the direct control page too: wrap the bridge's own HTTP server (only the one created inside createRuntime)
 // so /status, /chat, /hud.js go to this bot's status port and the page HTML gets the HUD script.

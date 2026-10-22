@@ -1,0 +1,14 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+import { createGamemodeSwitch } from './gamemode.js';
+const fake = () => { const calls = []; return { calls, run: async (c) => { calls.push(c); return ''; } }; };
+test('only creative and survival are allowed', async () => { const r = fake(); let t = 0; const g = createGamemodeSwitch({ username: 'Host_bot', run: r.run, now: () => (t += 5000) });
+  for (const m of ['spectator', 'adventure', 'creative Other_bot', '', undefined]) assert.equal((await g.set(m)).error, 'invalid_mode');
+  assert.deepEqual(await g.set('survival'), { ok: true, mode: 'survival' }); assert.deepEqual(await g.set('creative'), { ok: true, mode: 'creative' });
+  assert.deepEqual(r.calls, ['gamemode survival Host_bot', 'gamemode creative Host_bot']); });
+test('always targets its own username only', async () => { const r = fake(); const g = createGamemodeSwitch({ username: 'Host_bot', run: r.run, minIntervalMs: 0 });
+  await g.set('survival', 'Someone_else'); assert.deepEqual(r.calls, ['gamemode survival Host_bot']); });
+test('unsafe usernames disable the switch', async () => { for (const u of ['@a', 'a b', 'x;stop', '', 'waytoolongusername_1']) { const r = fake(); const g = createGamemodeSwitch({ username: u, run: r.run }); assert.equal(g.enabled, false); assert.equal((await g.set('creative')).error, 'not_configured'); assert.equal(r.calls.length, 0); } });
+test('rate limited to one per interval', async () => { const r = fake(); let t = 0; const g = createGamemodeSwitch({ username: 'Host_bot', run: r.run, minIntervalMs: 3000, now: () => t });
+  assert.equal((await g.set('survival')).ok, true); t = 2999; assert.equal((await g.set('creative')).error, 'rate_limited'); t = 3000; assert.equal((await g.set('creative')).ok, true); assert.equal(r.calls.length, 2); });
+test('disabled without rcon and reports rcon errors', async () => { assert.equal(createGamemodeSwitch({ username: 'Host_bot' }).enabled, false);
+  const g = createGamemodeSwitch({ username: 'Host_bot', run: async () => { throw new Error('rcon_auth_failed'); } }); assert.deepEqual(await g.set('creative'), { ok: false, error: 'rcon_auth_failed' }); });

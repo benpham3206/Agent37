@@ -19,7 +19,7 @@ import { boxEdges, cameraPoint, project } from './projection.js';
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${location.host}/control`);
     socket.addEventListener('open', () => { released = false; $('connection').textContent = 'Connected'; $('connection').classList.add('live'); $('error').textContent = ''; });
-    socket.addEventListener('message', event => { try { const message = JSON.parse(event.data); if (message.type === 'state') updateState(message); } catch (_) { $('error').textContent = 'Invalid state from bridge'; } });
+    socket.addEventListener('message', event => { try { const message = JSON.parse(event.data); if (message.type === 'state') updateState(message); else if (message.type === 'gamemode_result' && !message.ok) $('error').textContent = `Mode switch: ${({rate_limited:'wait a few seconds',not_configured:'host has not enabled mode switching',invalid_mode:'only creative or survival'})[message.error] ?? message.error}`; } catch (_) { $('error').textContent = 'Invalid state from bridge'; } });
     socket.addEventListener('close', () => { armed = false; $('connection').textContent = 'Disconnected'; $('connection').classList.remove('live'); clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 1000); });
     socket.addEventListener('error', () => { $('error').textContent = 'Control connection error'; });
   }
@@ -31,6 +31,7 @@ import { boxEdges, cameraPoint, project } from './projection.js';
     $('health').textContent = display(self.health); $('target-health').textContent = target ? display(target.health) : '—'; $('distance').textContent = target ? display(target.distance, 2) : '—'; $('tracked').textContent = target ? 'yes' : 'no'; $('los').textContent = target ? (target.line_of_sight == null ? '—' : (target.line_of_sight ? 'yes' : 'no')) : '—';
     const incoming=self.incoming_attack||{}, attacker=incoming.attacker_name||incoming.attacker_mob_type; const threat=$('threat'); threat.className='threat'; if(incoming.hit_received){const amount=display(incoming.damage,1); threat.classList.add('hit'); threat.textContent=`HIT${amount==='—'?'':` −${amount} HP`}${attacker?` by ${attacker}`:''}`; $('incoming').textContent='HIT';}else if(incoming.swing_detected){threat.classList.add('swing'); threat.textContent=`SWING${attacker?` by ${attacker}`:''}`; $('incoming').textContent='SWING';}else{threat.classList.add('quiet'); threat.textContent='Incoming: quiet'; $('incoming').textContent='quiet';} $('last-hit').textContent=incoming.hit_age_ms==null?'—':`${(incoming.hit_age_ms/1000).toFixed(1)}s · ${display(incoming.damage,1)} HP`;
     if (message.viewer_port && message.viewer_port !== viewerPort) { viewerPort = message.viewer_port; viewer.src = `${location.protocol}//${location.hostname}:${viewerPort}`; }
+    { const mode = message.gamemode, btn = $('gamemode-toggle'); $('gamemode').textContent = mode ?? '—'; btn.dataset.next = mode === 'survival' ? 'creative' : 'survival'; btn.textContent = `Switch to ${btn.dataset.next}`; btn.disabled = !message.gamemode_switch || !mode; btn.title = message.gamemode_switch ? 'Switch only this bot between creative and survival' : 'Host has not enabled mode switching'; }
     if (message.viewer_error) $('error').textContent = `Viewer: ${message.viewer_error}`;
     drawTarget(target, self);
   }
@@ -53,6 +54,7 @@ import { boxEdges, cameraPoint, project } from './projection.js';
   $('target').addEventListener('change', () => send({type:'target', mob_type:$('target').value})); document.querySelectorAll('[data-record]').forEach(button => button.addEventListener('click', () => send({type:'record',command:button.dataset.record}))); document.querySelectorAll('[data-label]').forEach(button => button.addEventListener('click', () => send({type:'label',label:button.dataset.label})));
   const drives={forward:[{forward:true,sprint:true},800],back:[{back:true},600],left:[{left:true},600],right:[{right:true},600],shield:[{use:true},800],attack:[{attack:true},180],jump:[{forward:true,jump:true},350],'turn-left':[{yaw_delta:Math.PI/15},120],'turn-right':[{yaw_delta:-Math.PI/15},120]}; document.querySelectorAll('[data-drive]').forEach(button=>button.addEventListener('click',()=>{const [patch,duration]=drives[button.dataset.drive];drive(patch,duration);}));
   document.querySelectorAll('[data-imitation]').forEach(button=>button.addEventListener('click',()=>send({type:'imitation',command:button.dataset.imitation})));
+  $('gamemode-toggle').addEventListener('click', () => { const btn = $('gamemode-toggle'); if (btn.disabled) return; btn.disabled = true; send({type:'setGamemode', mode: btn.dataset.next}); });
   setInterval(sendControl, 100);
   new ResizeObserver(resize).observe(overlay); window.addEventListener('resize', resize); connect();
 })();
