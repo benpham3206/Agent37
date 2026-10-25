@@ -151,6 +151,10 @@ If the host's computer is off, use your local server.
 | `java` not found | Install **Java 21**, then open a new terminal. |
 | Local server won't start | Set `eula=true` in `eula.txt`. |
 
+## Recording format
+
+See [Recording format and proposed fields](docs/recording-format.md) for the current `recording.js` session and JSONL formats, plus proposed server time, agent name, and controller ID fields for team review.
+
 ## Technology Stack
 
 - **Programming Language:** JavaScript
