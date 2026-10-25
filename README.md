@@ -147,6 +147,22 @@ During normal browser play, each row pairs the latest teacher input with the sel
 
 With the team launcher, JSONL files are saved under `tools/bridge/bridge-data/<bot>/devserver-test/encounters/` by default. Set `A37_DATA_DIR` in your bridge environment configuration to override the data root.
 
+### Loading recordings
+
+The Python loader in `harness/combat/dataset.py` is reused from Agent-37 and adapted for these recordings. `iter_encounters(path)` accepts a single session directory, an agent's data directory, or the parent containing all agents. It validates each session and yields `(session_path, rows)` for each nonempty encounter, preserving agent/controller/time metadata, labels, and arbitration. Use the session path together with the encounter ID when grouping data; different agents can reuse IDs. Label, teacher-control, and synthetic-data policies remain the training caller's responsibility.
+
+The loader accepts both `environment_suite` and the older `environment` session tag. Absent `disengage` actions default to false in action vectors. It keeps the shared feature/output order in `contracts/policy.json`. No Python packages beyond the standard library are required (Python 3.10+); Node and the installed bridge dependencies are required for the recorder-based tests.
+
+From the repository root, inspect recorded encounters without training a model:
+
+```powershell
+py -3 -B -c "import sys; from harness.combat.dataset import iter_encounters; print([(str(session), rows[0]['encounter_id'], len(rows)) for session, rows in iter_encounters(sys.argv[1])])" tools/bridge/bridge-data
+```
+
+Replace the final argument with your configured data root or a session directory. Stop recording before loading a dataset so label rewrites and new rows cannot change the files during validation. Malformed or empty sessions are reported as errors; empty encounter files in an otherwise valid session are skipped. Legacy rows may omit `agent_name`, `controller_id`, and `server_time_ms`; present values are validated, and `null` remains allowed.
+
+Run the loader regression tests with `py -3 -B -m unittest discover -s tests -v`.
+
 ## Something wrong?
 
 | Problem | Try this |
