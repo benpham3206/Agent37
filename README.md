@@ -153,7 +153,7 @@ If the host's computer is off, use your local server.
 
 ## Recording format
 
-See [Recording format and proposed fields](docs/recording-format.md) for the current `recording.js` session and JSONL formats, plus proposed server time, agent name, and controller ID fields for team review.
+See [Recording format](docs/recording-format.md) for the `recording.js` session and JSONL formats, including server time, agent name, controller ID, and source.
 
 ## Technology Stack
 

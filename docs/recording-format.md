@@ -1,8 +1,8 @@
-# Recording format and proposed fields
+# Recording format
 
-Status: Draft for human fact-check and lead review. The current format is schema version 1; the additions below are proposed and unimplemented.
+Status: Schema version 1, with additive server time and identity fields. Human fact-check and lead review remain pending.
 
-Training and dataset loaders depend on this format. The source of truth is [`bridge/recording.js`](../bridge/recording.js), reused from [Agent-37](https://github.com/benpham3206/Agent-37/blob/main/bridge/recording.js). The current-format sections describe this repository at commit `38be968`. [`server.js`](../bridge/server.js), [`observation.js`](../bridge/observation.js), and [`arbiter.js`](../bridge/arbiter.js) define the values supplied to the recorder. Runtime payload details below refer to the core bridge; launcher wrappers can modify control behavior.
+Training and dataset loaders depend on this format. The source of truth is [`bridge/recording.js`](../bridge/recording.js), originally reused from [Agent-37](https://github.com/benpham3206/Agent-37/blob/main/bridge/recording.js). These sections describe the code in this repository. [`server.js`](../bridge/server.js), [`observation.js`](../bridge/observation.js), and [`arbiter.js`](../bridge/arbiter.js) define the values supplied to the recorder. Runtime payload details below refer to the core bridge; launcher wrappers can modify control behavior.
 
 ## Files and session metadata
 
@@ -49,7 +49,7 @@ Example session metadata with supplied `sessionId`, `target`, and `notes`:
 
 ## Current encounter rows
 
-Each encounter file contains one compact JSON object per line, with a trailing newline. There is no header or footer. `Recorder.row(observation, teacherAction, appliedAction, arbiter, timestampMs = Date.now())` writes only while the state is `recording` and a file is open; it returns `true` after writing and `false` otherwise.
+Each encounter file contains one compact JSON object per line, with a trailing newline. There is no header or footer. `Recorder.row(observation, teacherAction, appliedAction, arbiter, timestampMs = Date.now(), { agentName = this.agentName, controllerId = null } = {})` writes only while the state is `recording` and a file is open; it returns `true` after writing and `false` otherwise. The constructor accepts an optional `agentName`, defaulting to `null`.
 
 | Field | Type and current meaning |
 | --- | --- |
@@ -58,7 +58,10 @@ Each encounter file contains one compact JSON object per line, with a trailing n
 | `encounter_id` | String generated as epoch milliseconds, a hyphen, and a random base-36 suffix using `Math.random().toString(36).slice(2, 8)`. Matches the filename stem. |
 | `tick` | Integer row counter starting at `0` in each new encounter, incremented for each written row. It is not a Minecraft server tick. |
 | `timestamp_ms` | Bridge host Unix epoch time in milliseconds, default `Date.now()` at the row call. A caller can supply another value; the recorder does not validate it. |
+| `server_time_ms` | Bridge server UTC Unix epoch milliseconds from `Date.now()` at write time, independently of a supplied `timestamp_ms`. |
 | `server_tick` | Always `null`; no server tick is captured. |
+| `agent_name` | Recorded bot's username, or `null` when unknown. |
+| `controller_id` | Opaque ID of the browser connection whose human command won arbitration, or `null` for nonhuman winners or unknown identity. |
 | `source` | Constant `"privileged_hitbox"`, describing observation provenance rather than who controls the bot. |
 | `recording_state` | Always `"recording"` in emitted rows. |
 | `label` | One of `"good"`, `"bad"`, `"excluded"`, `"unlabelled"`; new encounters start `"unlabelled"`. |
@@ -105,7 +108,7 @@ In recorded `arbiter.source`, the runtime renames the arbiter's `human` source t
 This synthetic example shows the exact envelope emitted by a direct recorder call with empty payload objects and a supplied timestamp. Real runtime payloads use the groups above. It is one JSONL line:
 
 ```json
-{"schema_version":1,"session_id":"demo-001","encounter_id":"1792868400000-abc123","tick":0,"timestamp_ms":1792868400000,"server_tick":null,"source":"privileged_hitbox","recording_state":"recording","label":"unlabelled","observation":{},"teacher_action":{},"applied_action":{},"arbiter":{}}
+{"schema_version":1,"session_id":"demo-001","encounter_id":"1792868400000-abc123","tick":0,"timestamp_ms":1792868400000,"server_time_ms":1792868400000,"server_tick":null,"agent_name":null,"controller_id":null,"source":"privileged_hitbox","recording_state":"recording","label":"unlabelled","observation":{},"teacher_action":{},"applied_action":{},"arbiter":{}}
 ```
 
 ## Encounter lifecycle and labels
@@ -122,46 +125,39 @@ This synthetic example shows the exact envelope emitted by a direct recorder cal
 
 Relabelling rewrites the file; encounter logs are not immutable. Rows are written synchronously, and explicit encounter close calls `fsyncSync` before closing. A crash can still leave incomplete data; consumers should report malformed lines instead of silently treating them as valid examples. Empty encounters need handling before indexing a first or last row. The existing replay/stats scripts assume nonempty, parseable input.
 
-## Proposed server time and identity fields
+## Server time and identity
 
-Propose schema version **2** for newly written session metadata and rows. Preserve the existing fields and meanings, including `timestamp_ms`, `tick`, `server_tick`, and the two `source` constants. Version 1 recordings remain valid historical inputs.
+Every new row includes these fields. Session metadata is unchanged.
 
-| Proposed field | Location and type | Meaning and population rule |
+| Field | Location and type | Meaning and population rule |
 | --- | --- | --- |
-| `server_time_ms` | Row; nonnegative integer or `null` | Minecraft server-origin Unix epoch wall-clock milliseconds associated with the sample. Populate only from an authoritative server time source with a documented sampling method. Use `null` when unavailable; do not copy bridge `Date.now()` or convert world time/daytime into epoch milliseconds. |
-| `agent_name` | Session and every row; nonempty string or `null` | Minecraft username of the bot being recorded. Prefer the actual connected bot username; if unavailable, use an explicitly configured username, otherwise `null`. Repeating it on rows lets loaders retain identity when processing an encounter alone. Keep it fixed within a session; use a new session if it changes. |
-| `controller_id` | Row; nonempty opaque string or `null` | Session-scoped identifier of the human controller whose command won arbitration for that sample (`arbiter.source === "teacher"`). Assign it in the bridge to the browser control connection and carry it with that connection's accepted input through arbitration. Use `null` for nonhuman winners or unknown identity. Reconnection gets a new ID; concurrent connections get distinct IDs. |
+| `server_time_ms` | Row; integer | Bridge server UTC wall clock at write time. It does not use the Minecraft server's clock, world age, or time of day. |
+| `agent_name` | Row; string or `null` | Runtime uses the connected bot's `username`, falling back to configured `username`, then `null`. Direct recorder calls can supply a constructor default or per-row override. |
+| `controller_id` | Row; string or `null` | Runtime generates a UUID per browser control connection and remembers it alongside that connection's latest accepted teacher input. It writes the ID only when `arbiter.source === "teacher"`. Reconnection gets a new ID; concurrent connections get distinct IDs. Direct recorder calls must supply the ID in the sixth argument; the default is `null`. |
 
-This defines “server time” as server wall-clock time. `server_tick` remains the separate reserved field for a possible authoritative Minecraft tick count. Neither is the encounter row counter. The current recorder supplies neither authoritative clock value. A future implementation needs a server-side time source before `server_time_ms` can be non-null; if the team wants world age or time of day instead, agree on a separately named field and its units before implementation.
+`server_tick` remains reserved for a possible authoritative Minecraft tick count. Neither clock field is the encounter row counter. Wall-clock adjustments can affect both host timestamps; they do not establish exact ordering across unsynchronized machines.
 
-`controller_id` identifies a connection, not a verified person, Minecraft entity, bot name, or arbiter category. It must not contain passwords, login tokens, or personal contact details. It attributes the selected human action; when another source overrides human input, it does not identify the author of the remaining `teacher_action`. Any need for that additional attribution requires a separate field definition.
+`controller_id` identifies a connection, not a verified person, Minecraft entity, bot name, or arbiter category. It contains a server-generated UUID, not a password or login token. It attributes the selected human action; when another source overrides human input, it does not identify the author of the remaining `teacher_action`.
 
-Proposed additional session member, using the existing example session:
-
-```json
-{
-  "agent_name": "Agent37Teacher"
-}
-```
-
-Proposed row example, retaining the existing envelope and showing unavailable server time and a human winner. Payloads are abbreviated with empty objects as in the direct-call example:
+Example with a known agent and human winner. Payloads are abbreviated with empty objects as in the direct-call example:
 
 ```json
-{"schema_version":2,"session_id":"demo-001","encounter_id":"1792868400000-abc123","tick":0,"timestamp_ms":1792868400000,"server_tick":null,"source":"privileged_hitbox","recording_state":"recording","label":"unlabelled","observation":{},"teacher_action":{},"applied_action":{},"arbiter":{"source":"teacher","reason":"teacher"},"server_time_ms":null,"agent_name":"Agent37Teacher","controller_id":"controller-001"}
+{"schema_version":1,"session_id":"demo-001","encounter_id":"1792868400000-abc123","tick":0,"timestamp_ms":1792868400000,"server_time_ms":1792868400000,"server_tick":null,"agent_name":"Agent37Teacher","controller_id":"b8d59168-13cc-4a64-92f2-601230b8a012","source":"privileged_hitbox","recording_state":"recording","label":"unlabelled","observation":{},"teacher_action":{},"applied_action":{},"arbiter":{"source":"teacher","reason":"teacher"}}
 ```
 
-### Loader compatibility and rollout proposal
+### Loader compatibility
 
-1. Update training and dataset readers to dispatch on schema version and accept both versions 1 and 2. Treat the three absent new fields in version 1 as unknown (`null`); do not infer identity from filenames or clock values. In version 2, require all three row keys, allowing `null` as defined above.
-2. Keep replay timing based on `timestamp_ms`. Unknown server time does not invalidate an otherwise usable sample. Clock changes or unsynchronized bridge hosts mean host timestamps alone cannot establish exact ordering across machines.
-3. Verify consumers with a version 1 fixture, a version 2 fixture with unknown values, and a version 2 human-control fixture. Check row fields survive label rewrites and controller IDs follow takeovers, reconnects, and safety overrides. Check empty/malformed encounters are handled explicitly. The in-repo replay/stats scripts read named fields without checking schema version, but compatibility with actual training/loaders still needs verification.
-4. Only then change the writer to emit version 2. Use a new session directory: the constructor currently preserves existing `session.json`, so reusing a version 1 session could otherwise mix metadata and row versions. Do not rewrite old datasets to manufacture missing server time or identities.
+Schema version remains **1**: the new row fields are additive, and the existing keys and meanings are preserved. Historical rows may lack them. Readers should treat absent values as unknown (`null`) and tolerate additional keys; strict field lists need to be updated. Do not rewrite old datasets to manufacture missing clock values or identities.
+
+Keep replay timing based on `timestamp_ms`. The in-repo replay/stats scripts read named fields without checking schema version. Compatibility with external training/loaders still needs verification by their owners.
+
+Run `node --test bridge/recording.test.js bridge/server.recording.test.js` from the repository root to check metadata, UTC clock capture, label rewrites, takeovers, reconnects, and safety overrides without a Minecraft server.
 
 ## Review and completion
 
-The lead should review the three field definitions, the proposed version bump, and the time source before implementation. Training and dataset-loader owners should verify the compatibility plan against their actual readers.
+The lead should review the field definitions and bridge UTC time semantics. Training and dataset-loader owners should verify compatibility against their actual readers.
 
 - [x] Describe the current session file, complete row envelope, payload sources, timestamps, labels, and encounter transitions against the repository code.
-- [x] Propose server time, agent name, and controller ID with locations, types, unknown-value rules, examples, and loader compatibility.
+- [x] Record server time, agent name, controller ID, and source on each new row, with regression coverage and documented loader compatibility.
 - [ ] A person checks every factual statement against the source and setup guide.
 - [ ] Post the shared document link in the team chat and ask project lead Ben Pham to review.

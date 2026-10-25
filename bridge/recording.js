@@ -4,8 +4,8 @@ import path from 'node:path';
 const LABELS = new Set(['good', 'bad', 'excluded', 'unlabelled']);
 
 export class Recorder {
-  constructor({ dataDir, sessionId, target, environmentSuite = 'open_surface', environmentLabel = 'open_surface', notes = '' }) {
-    this.dataDir = dataDir; this.sessionId = sessionId; this.target = target;
+  constructor({ dataDir, sessionId, target, environmentSuite = 'open_surface', environmentLabel = 'open_surface', notes = '', agentName = null }) {
+    this.dataDir = dataDir; this.sessionId = sessionId; this.target = target; this.agentName = agentName;
     this.environmentSuite = environmentSuite; this.environmentLabel = environmentLabel; this.notes = notes;
     this.state = 'idle'; this.encounterId = null; this.fd = null; this.path = null; this.tick = 0; this.label = 'unlabelled';
     this.sessionDir = path.join(dataDir, sessionId); fs.mkdirSync(this.sessionDir, { recursive: true });
@@ -24,8 +24,8 @@ export class Recorder {
     const rows = fs.readFileSync(this.path, 'utf8').split('\n').filter(Boolean).map((line) => { try { const row = JSON.parse(line); row.label = label; return JSON.stringify(row); } catch { return line; } });
     fs.writeFileSync(this.path, rows.length ? rows.join('\n') + '\n' : ''); if (wasOpen) this.fd = fs.openSync(this.path, 'a');
   }
-  row(observation, teacherAction, appliedAction, arbiter, timestampMs = Date.now()) {
+  row(observation, teacherAction, appliedAction, arbiter, timestampMs = Date.now(), { agentName = this.agentName, controllerId = null } = {}) {
     if (this.state !== 'recording' || this.fd === null) return false;
-    fs.writeSync(this.fd, JSON.stringify({ schema_version: 1, session_id: this.sessionId, encounter_id: this.encounterId, tick: this.tick++, timestamp_ms: timestampMs, server_tick: null, source: 'privileged_hitbox', recording_state: this.state, label: this.label, observation, teacher_action: teacherAction, applied_action: appliedAction, arbiter }) + '\n'); return true;
+    fs.writeSync(this.fd, JSON.stringify({ schema_version: 1, session_id: this.sessionId, encounter_id: this.encounterId, tick: this.tick++, timestamp_ms: timestampMs, server_time_ms: Date.now(), server_tick: null, agent_name: agentName, controller_id: controllerId, source: 'privileged_hitbox', recording_state: this.state, label: this.label, observation, teacher_action: teacherAction, applied_action: appliedAction, arbiter }) + '\n'); return true;
   }
 }
