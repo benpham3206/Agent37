@@ -143,6 +143,8 @@ If the host's computer is off, use your local server.
 
 Recording starts automatically when a bot first spawns. The bridge samples its observations and actions every 50 ms (nominally 20 rows per second; load can delay timers). Use the control page's Pause, Resume, and Stop buttons to manage recording. Respawning preserves a manual pause or stop. Disconnecting or closing the runtime stops recording and flushes the encounter file.
 
+During normal browser play, each row pairs the latest teacher input with the selected action. Mouse-look deltas are saved before they are consumed and cleared, so recordings retain the turn without applying it again on the next tick. Closing the control page releases controls; recording continues while the bot stays connected.
+
 With the team launcher, JSONL files are saved under `tools/bridge/bridge-data/<bot>/devserver-test/encounters/` by default. Set `A37_DATA_DIR` in your bridge environment configuration to override the data root.
 
 ## Something wrong?
