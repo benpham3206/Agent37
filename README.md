@@ -139,6 +139,12 @@ The server is only up while your computer and the playit agent are on.
 
 If the host's computer is off, use your local server.
 
+## Recording
+
+Recording starts automatically when a bot first spawns. The bridge samples its observations and actions every 50 ms (nominally 20 rows per second; load can delay timers). Use the control page's Pause, Resume, and Stop buttons to manage recording. Respawning preserves a manual pause or stop. Disconnecting or closing the runtime stops recording and flushes the encounter file.
+
+With the team launcher, JSONL files are saved under `tools/bridge/bridge-data/<bot>/devserver-test/encounters/` by default. Set `A37_DATA_DIR` in your bridge environment configuration to override the data root.
+
 ## Something wrong?
 
 | Problem | Try this |
