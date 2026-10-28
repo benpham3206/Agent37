@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bridge:
+    name: bridge tests + smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: bridge/package-lock.json
+      - name: Install bridge dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax-check every JS file
+        working-directory: .
+        run: |
+          set -e
+          git ls-files '*.js' '*.mjs' | grep -v node_modules | while read -r f; do node --check "$f"; done
+      - name: Unit tests
+        run: npm test
+      - name: Smoke test (one bridge, no game server)
+        run: npm run smoke
