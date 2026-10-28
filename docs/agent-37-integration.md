@@ -1,14 +1,17 @@
 # Bringing Agent-37 into this repo
 
-`tools/bridge` needs Agent-37's combat bridge (`bridge/`). This repo doesn't have it yet. Today it lives on the dev PC and in benpham3206/Agent-37.
+`tools/bridge` runs Agent-37's combat bridge. The bridge now lives in this repo at `bridge/`, so one clone has everything. The launcher (`tools/bridge/run-agent37-bridge.mjs`) and `status.mjs` use the in-repo `bridge/server.js` by default.
 
-## Options
+## Pick: vendored copy
 
-- **Vendor it.** Copy `bridge/` into `vendor/agent-37-bridge/` and record which Agent-37 commit it came from. One clone has everything, but fixes have to be copied by hand.
-- **Git submodule.** Add `benpham3206/Agent-37` at `vendor/Agent-37`. It's pinned to a commit and easy to update, but everyone has to run `git submodule update --init`.
-- **npm dependency.** Point at `github:benpham3206/Agent-37`. That doesn't work well, because the bridge is a subfolder and isn't packaged.
+The lead picked a vendored copy over a git submodule or an npm dependency. These files came from the Agent-37 build that runs the current demo:
 
-Suggestion: use a submodule pinned to a known-good commit. Then set `A37_BRIDGE_SERVER=vendor/Agent-37/bridge/server.js`.
+- `bridge/`: `server.js`, `arbiter.js`, `geometry.js`, `imitation.js`, `observation.js`, `policy.js`, `recording.js`, their tests, the `public/` control page, and `package.json` with its lock file.
+- `contracts/policy.json`: the shared policy feature contract that `policy.test.js` reads.
+
+Fixes made in Agent-37 have to be copied over by hand. To run a different bridge, set `A37_BRIDGE_SERVER` to its `server.js` (see `tools/bridge/bridge.env.example`).
+
+Not brought in yet: the teacher page and the training scripts. They're still only in Agent-37.
 
 ## Proposed fix in Agent-37
 
