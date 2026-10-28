@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "canvas": "^3.2.0",

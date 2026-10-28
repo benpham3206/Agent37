@@ -139,6 +139,21 @@ The server is only up while your computer and the playit agent are on.
 
 If the host's computer is off, use your local server.
 
+## Tests and CI
+
+Every pull request and every push to `main` runs the CI workflow (`.github/workflows/ci.yml`) on GitHub Actions. It installs `bridge/` dependencies, syntax-checks every JS file, runs the unit tests, and runs a smoke test. The smoke test starts one bridge with no Minecraft server and checks that `/combat/status` and the control page answer. It needs no secrets and takes about a minute.
+
+Run the same checks on your machine before you open a PR:
+
+```
+cd bridge
+npm ci
+npm test        # unit tests
+npm run smoke   # starts one bridge headless and checks it answers
+```
+
+CI doesn't cover anything that needs a live game: bots joining the server, the launcher in `tools/bridge/` (only its syntax is checked), RCON, or the viewer. Test those by hand on the dev server.
+
 ## Something wrong?
 
 | Problem | Try this |
