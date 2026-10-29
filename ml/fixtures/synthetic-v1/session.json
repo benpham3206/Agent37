@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "session_id": "synthetic-v1",
+  "target": "zombie",
+  "source": "human",
+  "environment_suite": "open_surface",
+  "environment_label": "open_surface",
+  "notes": "SYNTHETIC fixture; fabricated data, not a real recording.",
+  "created_at": "2026-10-01T00:00:00.000Z",
+  "synthetic": true
+}
