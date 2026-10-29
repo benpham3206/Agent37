@@ -1,6 +1,6 @@
 # Recording format and proposed fields
 
-Status: Draft for human fact-check and lead review. The current format is schema version 1; the additions below are proposed and unimplemented.
+Status: Schema version 2 is implemented for new session folders; the current-format sections below document historical version 1. Server time remains null without an authoritative source. Controller identity remains null at the runtime's R1 lease-holder integration placeholder. Human fact-check, lead review, and verification against external training/loaders remain pending.
 
 Training and dataset loaders depend on this format. The source of truth is [`bridge/recording.js`](../bridge/recording.js), reused from [Agent-37](https://github.com/benpham3206/Agent-37/blob/main/bridge/recording.js). The current-format sections describe this repository at commit `38be968`. [`server.js`](../bridge/server.js), [`observation.js`](../bridge/observation.js), and [`arbiter.js`](../bridge/arbiter.js) define the values supplied to the recorder. Runtime payload details below refer to the core bridge; launcher wrappers can modify control behavior.
 
@@ -163,5 +163,9 @@ The lead should review the three field definitions, the proposed version bump, a
 
 - [x] Describe the current session file, complete row envelope, payload sources, timestamps, labels, and encounter transitions against the repository code.
 - [x] Propose server time, agent name, and controller ID with locations, types, unknown-value rules, examples, and loader compatibility.
+- [x] Add version-dispatched encounter validation and v1, v2 unknown, and v2 human-control fixtures; explicitly report empty and malformed encounters.
+- [x] Emit version 2 with the three new row keys and session agent name, preserve v1 fields and datasets, and create new session folders on reuse or agent identity changes.
+- [x] Test identity precedence, supplied controller takeovers/reconnects and safety overrides, and preservation through label rewrites.
+- [ ] Replace the runtime R1 placeholder with the lease holder's opaque connection ID, never its token, and verify live takeovers and reconnects.
 - [ ] A person checks every factual statement against the source and setup guide.
 - [ ] Post the shared document link in the team chat and ask project lead Ben Pham to review.
