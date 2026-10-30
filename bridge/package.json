@@ -6,6 +6,7 @@
     "start": "node server.js",
     "test": "node --test",
     "eval": "node eval/run.mjs",
+    "bench:latency": "node bench/latency.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {

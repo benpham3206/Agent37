@@ -93,6 +93,8 @@ The standard action shape from [`emptyAction`](../bridge/arbiter.js) has:
 - Boolean fields: `forward`, `back`, `left`, `right`, `jump`, `sprint`, `sneak`, `attack`, `use`, `emergency_stop`, `manual_abort`.
 - `hotbar`: integer slot index `0` through `8`.
 - Numeric fields: `mouse_dx`, `mouse_dy`, `yaw_delta`, `pitch_delta`. Browser mouse deltas originate as mouse movement values; yaw/pitch deltas are radians.
+- `inventory` (API only): `"open"` or `"close"` in `POST /api/action` bodies ([`contracts/action.schema.json`](../contracts/action.schema.json)). It is applied at once, not through the arbiter, and is not part of recorded `applied_action` rows.
+- Structured facts (API only): `GET /api/observation` adds a `facts` group (position, dimension, health, food, inventory counts, nearest watched blocks, nearby mobs, time of day; see [`contracts/observation.schema.json`](../contracts/observation.schema.json)). Facts are computed on request and are not written to recordings.
 
 The arbiter sanitizes its action inputs: it coerces Boolean fields, clamps an integer hotbar slot to `0..8` (otherwise `0`), and clamps each finite numeric delta to `[-1, 1]` (otherwise `0`). `teacher_action` is the runtime's stored teacher input, not necessarily this sanitized output. In particular, applying human look input resets its stored mouse and angle deltas before the row is written. Do not assume teacher and applied deltas match.
 
