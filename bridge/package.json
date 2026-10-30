@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "bench:combat": "node bench/combat.mjs",
     "start": "node server.js",
     "test": "node --test",
     "smoke": "node scripts/smoke.mjs"
