@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCiArena, createLiveArena, checkCondition } from './arena.mjs';
+import { createCiArena, createLiveArena, checkCondition, targetType } from './arena.mjs';
 import { EventEmitter } from 'node:events';
 import { ActionArbiter } from '../arbiter.js';
 
@@ -107,4 +107,36 @@ test('live adapter closes on wrong seed and rejects unknown resets', async () =>
   await assert.rejects(arena.reset(null, { signal }), /reset_steps/);
   await assert.rejects(arena.reset([{ command: 'tp EvalTest 0 64 0' }], { signal }), /verify/);
   arena.close();
+});
+
+test('live adapter counts kills per type plus a hostile total, and fills {target}', async () => {
+  const fixture = liveFixture();
+  const bot = fixture.runtime.bot;
+  bot.entity = { name: 'player' };
+  bot.entities = { 1: { name: 'skeleton' }, 2: { name: 'zombie' }, 3: { name: 'cow' } };
+  fixture.options.skill = { requirements: { input: { target_type: 'skeleton', allowed_targets: ['zombie', 'skeleton'] } } };
+  const arena = await createLiveArena(fixture.options);
+  const before = arena.observe();
+  assert.deepEqual(before.kills, { hostile_total: 0, skeleton: 0 });
+  assert.deepEqual(before.trial, { target_type: 'skeleton', targets: 1 });
+  bot.emit('entityDead', bot.entities[3]); // a cow is counted by type, not as hostile
+  bot.emit('entityDead', bot.entities[2]);
+  bot.emit('entityDead', bot.entity); // the bot itself never counts
+  bot.emit('entityDead', null);
+  const after = arena.observe();
+  assert.deepEqual(after.kills, { hostile_total: 1, skeleton: 0, cow: 1, zombie: 1 });
+  assert.equal(checkCondition({ path: 'kills.hostile_total', increase_by: 1 }, before, after), true);
+  assert.equal(checkCondition({ path: 'kills.skeleton', increase_by: 1 }, before, after), false);
+  const signal = new AbortController().signal;
+  await arena.reset([{ command: 'summon minecraft:{target} 1 64 1', verify: { path: 'trial.targets', equals: 1 } }], { signal });
+  assert.equal(fixture.commands.at(-1), 'summon minecraft:skeleton 1 64 1');
+  arena.close();
+});
+
+test('target type must be an allowed hostile', () => {
+  assert.equal(targetType({}), 'zombie');
+  assert.equal(targetType({ requirements: { input: { target_type: 'creeper', allowed_targets: ['creeper'] } } }), 'creeper');
+  assert.throws(() => targetType({ requirements: { input: { target_type: 'cow' } } }), /target_type/);
+  assert.throws(() => targetType({ requirements: { input: { target_type: 'witch', allowed_targets: ['zombie'] } } }), /target_type/);
+  assert.throws(() => targetType({ requirements: { input: { target_type: 'zombie;op x' } } }), /target_type/);
 });
