@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
+    "eval": "node eval/run.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {

@@ -1,0 +1,21 @@
+{
+  "name": "test.noop",
+  "version": 1,
+  "implementation": {
+    "type": "code",
+    "artifact": "index.js",
+    "entry_point": "run"
+  },
+  "requirements": {
+    "description": "Test the runner without connecting to Minecraft or changing the world.",
+    "ci_only": true,
+    "input": {}
+  },
+  "success_check": {
+    "time_limit_ms": 1000,
+    "condition": { "path": "test.ready", "equals": true },
+    "failure_conditions": ["death", "execution_error", "human_takeover"]
+  },
+  "reset_steps": [],
+  "evaluation": null
+}
