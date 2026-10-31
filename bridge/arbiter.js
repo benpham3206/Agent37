@@ -19,14 +19,19 @@ export function gateSkillTerrain(action, terrain = null) {
   return out;
 }
 export class ActionArbiter {
-  constructor({ retreatHealth = 4, maxDurationMs = 120000 } = {}) { this.retreatHealth = retreatHealth; this.maxDurationMs = maxDurationMs; this.sources = new Map(); this.started = null; this.emergency = false; this.released = true; }
-  set(source, action, reason = 'requested') { if(this.released||this.started==null)this.started=Date.now(); this.sources.set(source, { action: sanitizeAction(action), reason, at: Date.now() }); this.released = false; }
+  // now() is injectable so tests can use a fake clock; it defaults to Date.now.
+  constructor({ retreatHealth = 4, maxDurationMs = 120000, now = Date.now } = {}) { this.retreatHealth = retreatHealth; this.maxDurationMs = maxDurationMs; this.now = now; this.sources = new Map(); this.started = null; this.emergency = false; this.released = true; }
+  set(source, action, reason = 'requested') { const t=this.now(); if(this.released||this.started==null)this.started=t; const since=this.sources.get(source)?.since ?? t; this.sources.set(source, { action: sanitizeAction(action), reason, at: t, since }); this.released = false; }
   release(reason = 'release') { this.sources.clear(); this.started=null; this.released = true; return { action: emptyAction(), source: 'idle', reason }; }
   emergencyStop(reason = 'emergency_stop') { this.emergency = true; return this.release(reason); }
   clearEmergency() { this.emergency = false; }
   tick({ health = null, terrain = null } = {}) {
     if (this.emergency) return { action: emptyAction(), source: 'emergency', reason: 'emergency_stop' };
-    if (this.started != null && Date.now() - this.started > this.maxDurationMs) return this.release('timeout');
+    // The time cap stops runaway automation (skill, mimic, navigation). A human
+    // driver is never cut off by it; their lock (lease) ends human control instead.
+    const t = this.now();
+    for (const [source, value] of this.sources) if (source !== 'human' && t - value.since > this.maxDurationMs) this.sources.delete(source);
+    if (this.started != null && this.sources.size === 0 && !this.released) return this.release('timeout');
     if (health != null && health <= this.retreatHealth) { this.sources.delete('human'); this.sources.delete('skill'); return { action: sanitizeAction({ back: true, sprint: true }), source: 'survival', reason: 'retreat_health' }; }
     let winner = { source: 'idle', reason: 'idle', action: emptyAction() }, best = 0;
     for (const [source, value] of this.sources) { const p = PRIORITY[source] ?? 1; if (p > best) { best = p; winner = { source, reason: value.reason, action: source==='skill'||source==='mimic' ? gateSkillTerrain(value.action,terrain) : value.action }; } }
