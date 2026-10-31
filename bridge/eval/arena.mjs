@@ -68,6 +68,24 @@ export function createCiArena() {
   return arena;
 }
 
+// Same hostile list as server.js (HOSTILE_MOBS), kept here so the arena can
+// count hostile kills without changing the server.
+export const HOSTILE_MOBS = new Set(['zombie','skeleton','husk','drowned','stray','bogged','enderman','blaze','phantom','creeper','spider','cave_spider','witch','pillager','vindicator','evoker','ravager','guardian','elder_guardian','slime','magma_cube','piglin_brute','hoglin','zoglin','wither_skeleton']);
+
+export function targetType(skill) {
+  const input = skill?.requirements?.input ?? {};
+  const type = input.target_type ?? skill?.requirements?.target_type ?? 'zombie';
+  const allowed = input.allowed_targets ?? [...HOSTILE_MOBS];
+  if (typeof type !== 'string' || !HOSTILE_MOBS.has(type) || !allowed.includes(type)) {
+    throw new Error(`target_type must be one of: ${allowed.join(', ')}`);
+  }
+  return type;
+}
+
+export function countMobs(bot, name) {
+  return Object.values(bot?.entities ?? {}).filter((entity) => entity?.name === name).length;
+}
+
 function required(env, name) {
   const value = env[name];
   if (!value) throw new Error(`${name} must be set for --live`);
@@ -92,7 +110,7 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
     username: required(env, 'A37_EVAL_USERNAME'),
     version: required(env, 'A37_MC_VERSION'),
     webPort: env.A37_EVAL_WEB_PORT ? port(env.A37_EVAL_WEB_PORT) : 0,
-    viewerPort: 0, bind: '127.0.0.1', target: skill.requirements?.target_type ?? 'zombie',
+    viewerPort: 0, bind: '127.0.0.1', target: targetType(skill),
     session: `eval-${process.pid}-${Date.now()}`, dataDir,
   };
   if (!/^[a-zA-Z0-9_]{1,16}$/.test(config.username)) throw new Error('invalid bot username');
@@ -105,6 +123,8 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
   const events = new EventEmitter();
   const runtime = await createRuntime(config);
   let pendingCommand = null;
+  // Start at known zeros so 'increase_by' checks work on the first kill.
+  const kills = { hostile_total: 0, [config.target]: 0 };
   const arena = {
     events, arbiter: runtime.arbiter, synthetic: false,
     observe() {
@@ -115,6 +135,10 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
         counts[item.name] = (counts[item.name] ?? 0) + item.count;
         return counts;
       }, {}) : null;
+      // Kill counts let success checks see a target die; the server's own
+      // target field moves on to the next mob or null when one dies.
+      observation.kills = { ...kills };
+      observation.trial = { target_type: config.target, targets: countMobs(runtime.bot, config.target) };
       return observation;
     },
     async reset(steps, { signal }) {
@@ -131,7 +155,7 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
           throw new Error('each live reset step needs one command and an observation verify condition');
         }
         // Commands belong to a team-reviewed skill in an approved test world.
-        pendingCommand = rconCommand(rcon, step.command.replaceAll('{username}', config.username));
+        pendingCommand = rconCommand(rcon, step.command.replaceAll('{username}', config.username).replaceAll('{target}', config.target));
         try { await pendingCommand; }
         finally { pendingCommand = null; }
         signal.throwIfAborted();
@@ -162,6 +186,12 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
     },
     bot: (signal) => trialBot(arena, signal),
   };
+  runtime.bot?.on('entityDead', (entity) => {
+    if (entity && entity !== runtime.bot.entity && typeof entity.name === 'string') {
+      kills[entity.name] = (kills[entity.name] ?? 0) + 1;
+      if (HOSTILE_MOBS.has(entity.name)) kills.hostile_total++;
+    }
+  });
   runtime.bot?.on('death', () => events.emit('failure', 'bot_death'));
   for (const event of ['error', 'kicked', 'end']) {
     runtime.bot?.on(event, () => events.emit('failure', `bot_${event}`));
