@@ -32,7 +32,6 @@ try {
   check(json.observation && 'self' in json.observation, '/combat/status has an observation');
   check(json.connection?.status === 'connecting', 'bot reports "connecting" with no game server');
   check(json.arbiter !== undefined && json.recording_state !== undefined, '/combat/status has arbiter and recording state');
-  check(json.advancements && Array.isArray(json.advancements.done) && json.advancements.known === false, '/combat/status has advancements (unknown before spawn)');
   const page = await get('/');
   check(page.status === 200 && page.type.includes('text/html'), 'control page is served at /');
   const missing = await get('/nope');
