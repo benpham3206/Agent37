@@ -38,3 +38,5 @@ jobs:
         run: npm test
       - name: Smoke test (one bridge, no game server)
         run: npm run smoke
+      - name: Latency bench (fake bot, 200 steps)
+        run: npm run bench:latency -- --ci --steps 200

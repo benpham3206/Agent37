@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent37/observation.schema.json",
+  "title": "Agent37 observation (GET /api/observation)",
+  "description": "The bridge observation from buildObservation() in bridge/observation.js (groups described in docs/recording-format.md), plus the structured facts from buildFacts() used for goal checks.",
+  "type": "object",
+  "required": ["self", "target", "terrain", "facts"],
+  "properties": {
+    "self": { "type": "object", "required": ["position", "health"] },
+    "target": { "type": ["object", "null"] },
+    "terrain": { "type": ["object", "null"] },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "dimension", "health", "food", "inventory", "nearest_blocks", "nearby_mobs", "radius", "time_of_day", "is_day"],
+      "properties": {
+        "position": {
+          "type": ["object", "null"], "additionalProperties": false, "required": ["x", "y", "z"],
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" } }
+        },
+        "dimension": { "type": ["string", "null"], "description": "overworld, the_nether or the_end" },
+        "health": { "type": ["number", "null"], "minimum": 0, "maximum": 20 },
+        "food": { "type": ["number", "null"], "minimum": 0, "maximum": 20 },
+        "inventory": { "type": "object", "description": "Item name to total count, e.g. {\"iron_ingot\": 3}. Absent items are 0.", "additionalProperties": { "type": "integer", "minimum": 1 } },
+        "nearest_blocks": {
+          "type": "object",
+          "description": "For each watched block type, the closest one within radius, offset from the bot. Absent if none.",
+          "additionalProperties": {
+            "type": "object", "additionalProperties": false, "required": ["type", "distance", "dx", "dy", "dz"],
+            "properties": { "type": { "type": "string" }, "distance": { "type": "number", "minimum": 0 }, "dx": { "type": "number" }, "dy": { "type": "number" }, "dz": { "type": "number" } }
+          }
+        },
+        "nearby_mobs": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "type", "distance", "dx", "dy", "dz", "hostile"],
+            "properties": { "id": { "type": ["integer", "null"] }, "type": { "type": "string" }, "distance": { "type": "number", "minimum": 0 }, "dx": { "type": "number" }, "dy": { "type": "number" }, "dz": { "type": "number" }, "hostile": { "type": "boolean" } }
+          }
+        },
+        "radius": { "type": "number", "minimum": 1 },
+        "time_of_day": { "type": ["integer", "null"], "minimum": 0, "maximum": 23999 },
+        "is_day": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

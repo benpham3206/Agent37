@@ -37,3 +37,54 @@ export function buildObservation(bot, target = null, { hostiles = [], projectile
   const incoming_attack={swing_detected:Boolean(incomingSwing&&now-incomingSwing.timestamp_ms<=700),hit_received:Boolean(selfDamage&&now-selfDamage.timestamp_ms<=1500),attacker_id:incomingSwing?.source_id??selfDamage?.source_id??null,attacker_name:incomingSwing?.source_name??selfDamage?.source_name??null,attacker_mob_type:incomingSwing?.source_mob_type??selfDamage?.source_mob_type??null,swing_age_ms:incomingSwing?now-incomingSwing.timestamp_ms:null,hit_age_ms:selfDamage?now-selfDamage.timestamp_ms:null,damage:selfDamage?.amount??0};
   return { self: { position: selfPos, velocity: selfVel, yaw: e?.yaw ?? null, pitch: e?.pitch ?? null, on_ground: e?.onGround ?? null, health: Number.isFinite(bot?.health) ? bot.health : null, hunger: Number.isFinite(bot?.food) ? bot.food : null, armor: null, effects: [], held_item: bot?.heldItem?.name ?? null, offhand_item:offhand, hotbar_slot: Number.isInteger(bot?.quickBarSlot) ? bot.quickBarSlot : null, cooldown: null, sprinting: bot?.getControlState?.('sprint') ?? null, sneaking: bot?.getControlState?.('sneak') ?? null, using_item: bot?.usingHeldItem ?? null, incoming_attack, recent_events: recentEvents }, target: targetState, hostiles: hostiles.map((x) => ({ id:x.id ?? null, mob_type:x.name ?? null, position:vec(x.position) })), projectiles: projectiles.map((x) => ({ id:x.id ?? null, position:vec(x.position), velocity:vec(x.velocity) })), collision: {}, dimension: terrain.dimension, terrain, selector };
 }
+
+// B1: structured facts for goal checks ("has 3 iron", "lava within 16 blocks").
+// Computed on demand by GET /api/observation, not in the 20 Hz control tick,
+// so recordings and the control loop stay unchanged and block scans stay cheap.
+export const WATCHED_BLOCKS = Object.freeze(['iron_ore','deepslate_iron_ore','coal_ore','diamond_ore','deepslate_diamond_ore','stone','oak_log','lava','water','obsidian','crafting_table','furnace','nether_portal']);
+export const HOSTILE_MOBS = new Set(['zombie','skeleton','husk','drowned','stray','bogged','enderman','blaze','phantom','creeper','spider','cave_spider','witch','pillager','vindicator','evoker','ravager','guardian','elder_guardian','slime','magma_cube','piglin_brute','hoglin','zoglin','wither_skeleton','ghast','zombified_piglin','piglin','silverfish','endermite','shulker','vex','warden','breeze']);
+const round = (v, d = 2) => (Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : null);
+function offset(from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+  return { distance: round(Math.hypot(dx, dy, dz)), dx: round(dx), dy: round(dy), dz: round(dz) };
+}
+export function normalizeDimension(value) {
+  const d = String(value ?? '').replace(/^minecraft:/, '');
+  if (d === 'overworld' || d === 'the_nether' || d === 'the_end') return d;
+  if (d === 'nether') return 'the_nether';
+  if (d === 'end') return 'the_end';
+  return d || null;
+}
+export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS } = {}) {
+  const pos = bot?.entity?.position;
+  const position = pos ? { x: round(pos.x), y: round(pos.y), z: round(pos.z) } : null;
+  const inventory = {};
+  for (const item of bot?.inventory?.items?.() ?? []) inventory[item.name] = (inventory[item.name] ?? 0) + item.count;
+  const nearest_blocks = {};
+  if (pos && typeof bot.findBlock === 'function') {
+    for (const type of watched) {
+      const id = bot.registry?.blocksByName?.[type]?.id;
+      if (id == null) continue; // unknown in this game version
+      const block = bot.findBlock({ matching: id, maxDistance: radius, point: pos });
+      if (block?.position) nearest_blocks[type] = { type, ...offset(pos, block.position) };
+    }
+  }
+  const nearby_mobs = [];
+  if (pos) {
+    for (const entity of Object.values(bot.entities ?? {})) {
+      if (!entity?.position || entity === bot.entity || entity.type === 'player' || entity.type === 'object' || !entity.name) continue;
+      const o = offset(pos, entity.position);
+      if (o.distance <= radius) nearby_mobs.push({ id: entity.id ?? null, type: entity.name, ...o, hostile: HOSTILE_MOBS.has(entity.name) });
+    }
+    nearby_mobs.sort((a, b) => a.distance - b.distance || String(a.type).localeCompare(String(b.type)));
+  }
+  const tod = bot?.time?.timeOfDay;
+  return {
+    position, dimension: normalizeDimension(bot?.game?.dimension),
+    health: Number.isFinite(bot?.health) ? bot.health : null,
+    food: Number.isFinite(bot?.food) ? bot.food : null,
+    inventory, nearest_blocks, nearby_mobs, radius,
+    time_of_day: Number.isFinite(tod) ? tod : null,
+    is_day: typeof bot?.time?.isDay === 'boolean' ? bot.time.isDay : (Number.isFinite(tod) ? tod < 13000 || tod >= 23000 : null),
+  };
+}
