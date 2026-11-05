@@ -41,7 +41,7 @@ export function buildObservation(bot, target = null, { hostiles = [], projectile
 // B1: structured facts for goal checks ("has 3 iron", "lava within 16 blocks").
 // Computed on demand by GET /api/observation, not in the 20 Hz control tick,
 // so recordings and the control loop stay unchanged and block scans stay cheap.
-export const WATCHED_BLOCKS = Object.freeze(['iron_ore','deepslate_iron_ore','coal_ore','diamond_ore','deepslate_diamond_ore','stone','oak_log','lava','water','obsidian','crafting_table','furnace','nether_portal']);
+export const WATCHED_BLOCKS = Object.freeze(['iron_ore','deepslate_iron_ore','coal_ore','diamond_ore','deepslate_diamond_ore','stone','oak_log','birch_log','spruce_log','jungle_log','acacia_log','dark_oak_log','cherry_log','mangrove_log','lava','water','obsidian','crafting_table','furnace','nether_portal']);
 export const HOSTILE_MOBS = new Set(['zombie','skeleton','husk','drowned','stray','bogged','enderman','blaze','phantom','creeper','spider','cave_spider','witch','pillager','vindicator','evoker','ravager','guardian','elder_guardian','slime','magma_cube','piglin_brute','hoglin','zoglin','wither_skeleton','ghast','zombified_piglin','piglin','silverfish','endermite','shulker','vex','warden','breeze']);
 const round = (v, d = 2) => (Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : null);
 function offset(from, to) {
@@ -87,4 +87,99 @@ export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS } = {}) 
     time_of_day: Number.isFinite(tod) ? tod : null,
     is_day: typeof bot?.time?.isDay === 'boolean' ? bot.time.isDay : (Number.isFinite(tod) ? tod < 13000 || tod >= 23000 : null),
   };
+}
+
+function invCount(inventory, name) {
+  const n = inventory?.[name];
+  return Number.isFinite(n) ? n : 0;
+}
+function invHasSuffix(inventory, suffix) {
+  for (const [name, count] of Object.entries(inventory ?? {})) {
+    if (name.endsWith(suffix) && Number(count) >= 1) return name;
+  }
+  return null;
+}
+function nearestHasSuffix(nearest, suffix) {
+  for (const name of Object.keys(nearest ?? {})) {
+    if (name.endsWith(suffix)) return name;
+  }
+  return null;
+}
+function hasAny(inventory, names) {
+  for (const name of names) if (invCount(inventory, name) >= 1) return name;
+  return null;
+}
+
+// Nether demo chain from facts only. Iron demo-ready when iron_ingot >= 7
+// (pickaxe 3 + bucket 3 + flint_and_steel 1), or iron_pickaxe plus a bucket
+// and flint_and_steel, or iron_pickaxe with iron_ingot >= 3 leftover.
+export function scoreNetherChain(facts = {}) {
+  const inventory = facts?.inventory ?? {};
+  const nearest = facts?.nearest_blocks ?? {};
+  const position = facts?.position ?? null;
+  const dimension = normalizeDimension(facts?.dimension);
+  const knownDim = dimension === 'overworld' || dimension === 'the_nether' || dimension === 'the_end';
+  const steps = [];
+
+  // spawn
+  if (position || knownDim) {
+    steps.push({ id: 'spawn', status: 'demo-ready', detail: position ? 'has position' : `dimension ${dimension}` });
+  } else {
+    steps.push({ id: 'spawn', status: 'not-started' });
+  }
+
+  // wood
+  const woodInv = invHasSuffix(inventory, '_log') || invHasSuffix(inventory, '_stem');
+  const woodNear = nearestHasSuffix(nearest, '_log') || nearestHasSuffix(nearest, '_stem');
+  if (woodInv) steps.push({ id: 'wood', status: 'demo-ready', detail: woodInv });
+  else if (woodNear) steps.push({ id: 'wood', status: 'close', detail: `nearby ${woodNear}` });
+  else steps.push({ id: 'wood', status: 'not-started' });
+
+  // tools
+  const pick = invHasSuffix(inventory, '_pickaxe');
+  if (pick) steps.push({ id: 'tools', status: 'demo-ready', detail: pick });
+  else steps.push({ id: 'tools', status: 'not-started' });
+
+  // iron
+  const ingots = invCount(inventory, 'iron_ingot');
+  const hasIronPick = invCount(inventory, 'iron_pickaxe') >= 1;
+  const bucket = hasAny(inventory, ['bucket', 'water_bucket', 'lava_bucket']);
+  const flint = invCount(inventory, 'flint_and_steel') >= 1;
+  if (ingots >= 7) {
+    steps.push({ id: 'iron', status: 'demo-ready', detail: `${ingots} iron_ingot` });
+  } else if (hasIronPick && bucket && flint) {
+    steps.push({ id: 'iron', status: 'demo-ready', detail: 'iron_pickaxe + bucket + flint_and_steel' });
+  } else if (hasIronPick && ingots >= 3) {
+    steps.push({ id: 'iron', status: 'demo-ready', detail: `iron_pickaxe + ${ingots} iron_ingot` });
+  } else if (ingots > 0 || hasIronPick) {
+    steps.push({ id: 'iron', status: 'close', detail: hasIronPick ? 'iron_pickaxe partial kit' : `${ingots} iron_ingot` });
+  } else {
+    steps.push({ id: 'iron', status: 'not-started' });
+  }
+
+  // obsidian
+  const obsInv = invCount(inventory, 'obsidian');
+  const lavaBucket = invCount(inventory, 'lava_bucket') >= 1;
+  if (obsInv >= 1) steps.push({ id: 'obsidian', status: 'demo-ready', detail: `${obsInv} obsidian` });
+  else if (nearest.obsidian) steps.push({ id: 'obsidian', status: 'demo-ready', detail: 'nearby obsidian' });
+  else if (nearest.lava && nearest.water) steps.push({ id: 'obsidian', status: 'demo-ready', detail: 'lava and water nearby' });
+  else if (lavaBucket) steps.push({ id: 'obsidian', status: 'demo-ready', detail: 'lava_bucket' });
+  else if (nearest.lava || nearest.water) steps.push({ id: 'obsidian', status: 'close', detail: nearest.lava ? 'lava nearby' : 'water nearby' });
+  else steps.push({ id: 'obsidian', status: 'not-started' });
+
+  // light
+  if (flint) steps.push({ id: 'light', status: 'demo-ready', detail: 'flint_and_steel' });
+  else if (nearest.nether_portal) steps.push({ id: 'light', status: 'demo-ready', detail: 'nether_portal nearby' });
+  else steps.push({ id: 'light', status: 'not-started' });
+
+  // enter — demo-ready only in the Nether; portal nearby while still overworld is close
+  if (dimension === 'the_nether') steps.push({ id: 'enter', status: 'demo-ready', detail: 'in the_nether' });
+  else if (nearest.nether_portal) steps.push({ id: 'enter', status: 'close', detail: 'nether_portal nearby' });
+  else steps.push({ id: 'enter', status: 'not-started' });
+
+  const blockerStep = steps.find((s) => s.status !== 'demo-ready') ?? null;
+  const blocker = blockerStep
+    ? { id: blockerStep.id, reason: blockerStep.detail ?? `${blockerStep.id} is ${blockerStep.status}` }
+    : null;
+  return { steps, blocker };
 }
