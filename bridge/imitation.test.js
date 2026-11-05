@@ -49,6 +49,7 @@ test('keeps a failed demonstration save retryable',()=>{
     assert.equal(saved.state,'ready');
     assert.equal(saved.frames,1);
     assert.equal(JSON.parse(fs.readFileSync(savePath,'utf8')).frames.length,1);
+    assert.equal(fs.existsSync(`${savePath}.tmp`),false);
   }finally{
     fs.rmSync(root,{recursive:true,force:true});
   }
