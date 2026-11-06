@@ -81,11 +81,14 @@ test('a wrong token cannot heartbeat or release the current lease', () => {
 test('the lease expires after three seconds without a heartbeat', () => {
   const { clock, lease } = makeLease({ ms: 3000 });
   lease.acquire('connection-a');
+  const firstControllerId = lease.holder();
 
   clock.advance(2999);
-  assert.equal(lease.holder(), 'controller-1');
+  assert.equal(lease.holder(), firstControllerId);
   clock.advance(1);
   assert.equal(lease.holder(), null);
+  lease.acquire('connection-a');
+  assert.notEqual(lease.holder(), firstControllerId);
 });
 
 test('a valid heartbeat extends the lease and release frees it immediately', () => {
@@ -110,7 +113,7 @@ test('expiry invokes the callback once', () => {
     now: clock.now,
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
-    onExpire: () => arbiter.release('lease_expired'),
+    onExpire: (reason) => arbiter.release(reason),
   });
   lease.acquire('connection-a');
 
@@ -130,7 +133,7 @@ test('holder exposes a controller id separate from the token, and reconnects get
 
   assert.equal(lease.release(token), true);
   const renewed = lease.acquire('connection-a');
-  assert.equal(lease.holder(), firstControllerId);
+  assert.notEqual(lease.holder(), firstControllerId);
   assert.equal(lease.release(renewed.token), true);
   lease.acquire('connection-a-reconnected');
   const secondControllerId = lease.holder();

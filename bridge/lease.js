@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 
 const DEFAULT_LEASE_MS = 3000;
 
 export class DriverLease {
   constructor({
     ms = Number(process.env.A37_LEASE_MS) || DEFAULT_LEASE_MS,
-    now = Date.now,
+    now = performance.now.bind(performance),
     setTimeout = globalThis.setTimeout,
     clearTimeout = globalThis.clearTimeout,
     onExpire = () => {},
@@ -60,6 +61,7 @@ export class DriverLease {
     if (!this.current || this.current.token !== token) return false;
 
     this.#clearExpiry(this.current);
+    this.controllerIds.delete(this.current.connectionId);
     this.current = null;
     return true;
   }
@@ -98,7 +100,8 @@ export class DriverLease {
   #expire(current) {
     if (this.current !== current) return;
     this.#clearExpiry(current);
+    this.controllerIds.delete(current.connectionId);
     this.current = null;
-    this.onExpire();
+    this.onExpire('lease_expired');
   }
 }
