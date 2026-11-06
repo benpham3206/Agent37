@@ -30,6 +30,13 @@
             "properties": { "type": { "type": "string" }, "distance": { "type": "number", "minimum": 0 }, "dx": { "type": "number" }, "dy": { "type": "number" }, "dz": { "type": "number" } }
           }
         },
+        "sounds": {
+          "type": "array", "maxItems": 8,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["name", "category", "source", "direction", "distance", "age_ms"],
+            "properties": { "name": { "type": "string" }, "category": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "direction": { "type": ["string", "null"] }, "distance": { "type": ["number", "null"] }, "age_ms": { "type": "number" } }
+          }
+        },
         "nearby_mobs": {
           "type": "array",
           "items": {
