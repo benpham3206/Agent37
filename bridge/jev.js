@@ -27,6 +27,7 @@ export function jevState(facts = {}) {
     goal: 'reach the Nether: wood, tools, iron, obsidian, light a portal, enter',
     dimension: facts.dimension ?? null, health: facts.health ?? null, is_day: facts.is_day ?? null,
     inventory: facts.inventory ?? {}, nearest_blocks: near,
+    sounds: (facts.sounds ?? []).slice(0, 8).map((x) => ({ name: x.name, source: x.source ?? null, direction: x.direction, distance: x.distance, age_ms: x.age_ms })),
     nearby_mobs: (facts.nearby_mobs ?? []).slice(0, 8).map((m) => ({ type: m.type, hostile: m.hostile, distance: m.distance, dx: m.dx, dy: m.dy, dz: m.dz })),
   };
 }
@@ -36,7 +37,7 @@ export const QUESTIONS = Object.freeze({
     wood: 'No logs in inventory and a log is nearby', iron: 'Has tools but not enough iron, iron ore nearby',
     obsidian: 'Has iron kit, needs obsidian; obsidian nearby', lava_water: 'Needs obsidian and lava or water is nearby to make it',
     portal: 'A nether portal is nearby or the kit is complete', none: 'Nothing useful is nearby' } },
-  danger: { type: 'noul', instructions: 'Is a hostile mob or lava close enough to threaten the bot in the next few seconds?' },
+  danger: { type: 'noul', instructions: 'Using `nearby_mobs` and `sounds` (things heard, maybe out of sight), is a hostile mob or lava close enough to threaten the bot in the next few seconds?' },
 });
 
 export function createJevClient({ apiKey = process.env.JEV_API_KEY, model = process.env.JEV_MODEL ?? 'jev-latest', timeoutMs = 400, fetchImpl = globalThis.fetch } = {}) {
@@ -71,11 +72,12 @@ export function toHints(reply, facts = {}, now = Date.now()) {
 
 // Refresh hints every intervalMs. Skips a beat while a request is in flight.
 export function createJevPerception({ ask, getFacts, intervalMs = 500, now = Date.now, setTimer = setInterval, clearTimer = clearInterval, onError = () => {} }) {
-  let hints = null, busy = false, errors = 0, lastError = null, timer = null;
+  let hints = null, busy = false, errors = 0, lastError = null, timer = null, latency = null;
   async function refresh() {
     if (busy) return;
     busy = true;
-    try { const facts = getFacts(); hints = toHints(await ask(jevState(facts)), facts, now()); errors = 0; lastError = null; }
+    const started = now();
+    try { const facts = getFacts(); hints = toHints(await ask(jevState(facts)), facts, now()); latency = now() - started; errors = 0; lastError = null; }
     catch (e) { errors++; lastError = String(e?.message ?? e); onError(e); }
     finally { busy = false; }
   }
@@ -84,6 +86,6 @@ export function createJevPerception({ ask, getFacts, intervalMs = 500, now = Dat
     start() { if (!timer) timer = setTimer(() => { refresh(); }, intervalMs); return this; },
     stop() { if (timer) clearTimer(timer); timer = null; },
     // Hints older than 3 intervals are stale; the planner should fall back to facts.
-    read() { const age = hints ? now() - hints.at : null; return { enabled: true, hints, age_ms: age, stale: age == null || age > intervalMs * 3, errors, last_error: lastError }; },
+    read() { const age = hints ? now() - hints.at : null; return { enabled: true, hints, age_ms: age, stale: age == null || age > intervalMs * 3, latency_ms: latency, errors, last_error: lastError }; },
   };
 }

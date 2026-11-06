@@ -55,13 +55,35 @@ export function normalizeDimension(value) {
   if (d === 'end') return 'the_end';
   return d || null;
 }
-export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS } = {}) {
+export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS, sounds = [] } = {}) {
   const pos = bot?.entity?.position;
   const position = pos ? { x: round(pos.x), y: round(pos.y), z: round(pos.z) } : null;
   const inventory = {};
   for (const item of bot?.inventory?.items?.() ?? []) inventory[item.name] = (inventory[item.name] ?? 0) + item.count;
   const nearest_blocks = {};
-  if (pos && typeof bot.findBlock === 'function') {
+  if (pos && typeof bot.world?.getBlockStateId === 'function' && bot.registry?.blocksByStateId) {
+    // One pass over the cube reading cheap state ids. Calling findBlock once per type
+    // built a Block for every cell of common types (stone, water), ~0.5 s per call on a
+    // real world, which stalled the 50 ms tick.
+    const want = new Set(watched), byState = bot.registry.blocksByStateId, cache = new Map();
+    const cx = Math.floor(pos.x), cy = Math.floor(pos.y), cz = Math.floor(pos.z), r2 = radius * radius, cursor = new Vec3(0, 0, 0);
+    const minY = bot.game?.minY ?? -64, maxY = minY + (bot.game?.height ?? 384) - 1;
+    const best = {};
+    for (let dx = -radius; dx <= radius; dx++) for (let dy = -radius; dy <= radius; dy++) {
+      const y = cy + dy; if (y < minY || y > maxY) continue;
+      for (let dz = -radius; dz <= radius; dz++) {
+        const d2 = dx * dx + dy * dy + dz * dz; if (d2 > r2) continue;
+        cursor.x = cx + dx; cursor.y = y; cursor.z = cz + dz;
+        let sid; try { sid = bot.world.getBlockStateId(cursor); } catch { continue; }
+        if (sid == null) continue;
+        let name = cache.get(sid); if (name === undefined) { name = want.has(byState[sid]?.name) ? byState[sid].name : null; cache.set(sid, name); }
+        if (!name) continue;
+        const exact = (cursor.x - pos.x) ** 2 + (cursor.y - pos.y) ** 2 + (cursor.z - pos.z) ** 2;
+        if (!best[name] || exact < best[name].d) best[name] = { d: exact, x: cursor.x, y: cursor.y, z: cursor.z };
+      }
+    }
+    for (const type of watched) if (best[type] && Math.sqrt(best[type].d) <= radius) nearest_blocks[type] = { type, ...offset(pos, best[type]) };
+  } else if (pos && typeof bot.findBlock === 'function') {
     for (const type of watched) {
       const id = bot.registry?.blocksByName?.[type]?.id;
       if (id == null) continue; // unknown in this game version
@@ -83,7 +105,7 @@ export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS } = {}) 
     position, dimension: normalizeDimension(bot?.game?.dimension),
     health: Number.isFinite(bot?.health) ? bot.health : null,
     food: Number.isFinite(bot?.food) ? bot.food : null,
-    inventory, nearest_blocks, nearby_mobs, radius,
+    inventory, nearest_blocks, nearby_mobs, sounds, radius,
     time_of_day: Number.isFinite(tod) ? tod : null,
     is_day: typeof bot?.time?.isDay === 'boolean' ? bot.time.isDay : (Number.isFinite(tod) ? tod < 13000 || tod >= 23000 : null),
   };
