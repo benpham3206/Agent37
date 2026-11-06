@@ -4,7 +4,7 @@
 import { EventEmitter } from 'node:events';
 
 export const BLOCKS = { iron_ore: { x: 3, y: 60, z: 4 }, lava: { x: 10, y: 64, z: 0 }, water: { x: -2, y: 63, z: 1 }, stone: { x: 0, y: 63, z: 0 }, diamond_ore: { x: 0, y: 40, z: 0 } };
-const NAMES = ['iron_ore','deepslate_iron_ore','coal_ore','diamond_ore','deepslate_diamond_ore','stone','oak_log','lava','water','obsidian','crafting_table','furnace','nether_portal'];
+const NAMES = ['iron_ore','deepslate_iron_ore','coal_ore','diamond_ore','deepslate_diamond_ore','stone','oak_log','birch_log','spruce_log','jungle_log','acacia_log','dark_oak_log','cherry_log','mangrove_log','lava','water','obsidian','crafting_table','furnace','nether_portal'];
 
 export function fakeWorldBot({ blocks = BLOCKS, dimension = 'minecraft:overworld', timeOfDay = 6000 } = {}) {
   const bot = new EventEmitter();
