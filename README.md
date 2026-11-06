@@ -37,6 +37,15 @@ A Minecraft Harness for AI agents to learn new skills and imitate player example
 
 **🔗 Public Board:** [Project Agent37](https://github.com/users/benpham3206/projects/2)
 
+## Showcase (Fall 2026)
+
+- **Pitch:** Mon Nov 16, 3–5 PM PT, Student Union Theater. Project lead: 2–3 min startup-style talk, **≤5 slides**, then live Q&A. All members attend.
+- **Demo video:** record by ~Nov 12. Headline goal: bots reach the Nether from a fresh spawn (target up to 4 bots).
+- **Board checkpoints:** M2 Nov 5 · M3 Nov 12 · Dry run Nov 14 · Showcase Nov 16.
+- **Recent / planned:** V4 learned combat model and ML dataset pipeline merged (PRs #52–#55). Jev perception layer (fast observation feed for the planner) is planned for the M3 window; see the project board and `docs/ROADMAP.md`.
+
+See also: [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## Repository Structure
 
 ```
@@ -50,6 +59,7 @@ Agent37/
 ├── docs/
 │   ├── members.csv             # Team member details with LinkedIn & Discord
 │   ├── info.json               # Project metadata for website automation
+│   ├── ROADMAP.md              # Fall 2026 checkpoints and Nether headline
 │   ├── thumbnail.webp          # Project thumbnail image
 │   └── pitch_slides.pdf        # Project presentation slides
 ```
@@ -187,8 +197,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Last Updated:** Oct 13, 2026  
-**Next Review:** [Date]
+**Last Updated:** Nov 5, 2026  
+**Next Review:** Nov 12, 2026 (demo video) / Nov 16, 2026 (showcase)
 
 ---
 
