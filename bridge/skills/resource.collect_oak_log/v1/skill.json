@@ -1,0 +1,20 @@
+{
+  "name": "resource.collect_oak_log",
+  "version": 1,
+  "implementation": { "type": "code", "artifact": "index.js", "entry_point": "run" },
+  "requirements": {
+    "description": "Collect one log of any *_log type into inventory through the runner interface. Needs observation.facts.nearest_blocks, which the live arena does not attach yet, so live trials fail at reset verification until it does.",
+    "input": {}
+  },
+  "success_check": {
+    "time_limit_ms": 45000,
+    "condition": { "path": "inventory.oak_log", "increase_by": 1 },
+    "failure_conditions": ["death", "execution_error", "human_takeover", "requirement_unmet"]
+  },
+  "reset_steps": [
+    { "command": "tp {username} 0.5 64 0.5", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "clear {username}", "verify": { "path": "inventory.oak_log", "equals": 0 } },
+    { "command": "setblock 3 64 0 minecraft:oak_log", "verify": { "path": "facts.nearest_blocks.oak_log.type", "equals": "oak_log" } }
+  ],
+  "evaluation": null
+}
