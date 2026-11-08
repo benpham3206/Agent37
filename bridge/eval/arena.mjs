@@ -135,6 +135,7 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
         counts[item.name] = (counts[item.name] ?? 0) + item.count;
         return counts;
       }, {}) : null;
+      observation.facts = runtime.facts?.() ?? null;
       // Kill counts let success checks see a target die; the server's own
       // target field moves on to the next mob or null when one dies.
       observation.kills = { ...kills };

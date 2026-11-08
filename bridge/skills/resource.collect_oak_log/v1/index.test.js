@@ -26,25 +26,32 @@ test('registry loads the seven-field runnable manifest and verified reset steps'
   for (const step of skill.reset_steps) assert.ok(step.command && step.verify);
 });
 
-test('approaches, attacks within reach, and succeeds on any newly collected log', async () => {
-  for (const item of ['oak_log', 'birch_log']) {
-    const inventory = { [item]: 2 };
-    const frames = [state(2, inventory), state(5.5, inventory, {}), state(5.5, { [item]: 3 }, {})];
-    const bot = fakeBot(state(0, inventory, { oak_log: { type: 'oak_log', distance: 5, dx: 5, dy: 0, dz: 0 } }), () => frames.shift());
-    const result = await createRun({ tickMs: 0 })(bot, {}, { signal: signal() });
-    assert.equal(result.outcome, 'success');
-    assert.equal(result.reason, 'log_collected');
-    assert.ok(bot.actions.length >= 3);
-    assert.equal(bot.actions[0].forward, true);
-    assert.equal(bot.actions[0].attack, false);
-    assert.equal(bot.actions[1].attack, true);
-    assert.equal(bot.actions[2].forward, false);
-    assert.equal(bot.releases(), 1);
-  }
+test('approaches, digs oak in reach, retains the target and succeeds on oak inventory gain', async () => {
+  const inventory = { oak_log: 2 };
+  const frames = [state(2, inventory), state(4.7, inventory, {}), state(5.5, inventory, {}), state(5.5, { oak_log: 3 }, {})];
+  const bot = fakeBot(state(0, inventory, { oak_log: { type: 'oak_log', distance: 5, dx: 5, dy: 0, dz: 0 } }), () => frames.shift());
+  const result = await createRun({ tickMs: 0 })(bot, {}, { signal: signal() });
+  assert.equal(result.outcome, 'success');
+  assert.equal(result.reason, 'log_collected');
+  assert.equal(bot.actions[0].forward, true);
+  assert.equal(bot.actions[0].dig, undefined);
+  for (const action of bot.actions.slice(1)) assert.deepEqual(action.dig, { x: 5, y: 64, z: 0 });
+  assert.equal(bot.actions[2].forward, true, 'walks into the broken cell to pick up the drop');
+  assert.equal(bot.actions[3].forward, false);
+  assert.ok(bot.actions.every((a) => !Object.hasOwn(a, 'attack')));
+  assert.equal(bot.releases(), 1);
+});
+
+test('birch inventory gain with an oak target cannot finish before abort', async () => {
+  const controller = new AbortController();
+  const bot = fakeBot(state(), (o) => { if (bot.actions.length === 2) controller.abort(); return { ...o, inventory: { birch_log: 1 } }; });
+  await assert.rejects(createRun({ tickMs: 0 })(bot, {}, { signal: controller.signal }), { name: 'AbortError' });
+  assert.equal(bot.actions.length, 2);
+  assert.equal(bot.releases(), 1);
 });
 
 test('missing facts and absent logs fail without actions and release controls', async () => {
-  for (const [o, reason] of [[{ self: { position: { x: 0, y: 64, z: 0 }, health: 20 } }, 'requirement_unmet:no_block_facts'], [state(0, {}, {}), 'no_log_in_range']]) {
+  for (const [o, reason] of [[{ self: { position: { x: 0, y: 64, z: 0 }, health: 20 } }, 'requirement_unmet:no_block_facts'], [state(0, {}, {}), 'no_log_in_range'], [state(0, {}, { birch_log: { type: 'birch_log', dx: 3, dy: 0, dz: 0, distance: 3 } }), 'no_log_in_range']]) {
     const bot = fakeBot(o, (x) => x);
     const result = await createRun()(bot, {}, { signal: signal() });
     assert.equal(result.outcome, 'failure');
