@@ -70,6 +70,14 @@ function liveFixture() {
   return { options, runtime, commands, released: () => released, closed: () => closed };
 }
 
+test('live observations include nearest block facts from the runtime', async () => {
+  const fixture = liveFixture();
+  fixture.runtime.facts = () => ({ nearest_blocks: { oak_log: { type: 'oak_log', dx: 3, dy: 0, dz: 0, distance: 3 } } });
+  const arena = await createLiveArena(fixture.options);
+  assert.deepEqual(arena.observe().facts.nearest_blocks, fixture.runtime.facts().nearest_blocks);
+  arena.close();
+});
+
 test('live adapter checks seed, verifies resets, routes controls and observes takeovers without a server', async () => {
   const fixture = liveFixture();
   const arena = await createLiveArena(fixture.options);

@@ -5,6 +5,7 @@ export function sanitizeAction(input = {}) {
   const a = emptyAction(); for (const k of BOOLS) a[k] = Boolean(input[k]);
   a.hotbar = Number.isInteger(input.hotbar) ? Math.max(0, Math.min(8, input.hotbar)) : 0;
   for (const k of ['mouse_dx','mouse_dy','yaw_delta','pitch_delta']) a[k] = Number.isFinite(input[k]) ? Math.max(-1, Math.min(1, input[k])) : 0;
+  const d=input.dig; if(d&&typeof d==='object'&&['x','y','z'].every(k=>Number.isInteger(d[k]))) a.dig={x:d.x,y:d.y,z:d.z};
   return a;
 }
 export function gateSkillTerrain(action, terrain = null) {
