@@ -1,0 +1,25 @@
+{
+  "name": "portal.light",
+  "version": 1,
+  "implementation": { "type": "code", "artifact": "index.js", "entry_point": "run" },
+  "requirements": {
+    "description": "Light a complete unlit obsidian frame on level ground in the overworld. Frame is the lowest corner with smallest x, width 4, height 5, constant z, bottom flush with ground. Requires flint_and_steel in a known selected hotbar slot and nearby block facts. Returns when a portal is observed inside this frame.",
+    "input": { "frame": { "x": 0, "y": 63, "z": 0 } }
+  },
+  "success_check": {
+    "time_limit_ms": 20000,
+    "condition": { "path": "facts.nearest_blocks.nether_portal.type", "equals": "nether_portal" },
+    "failure_conditions": ["death", "execution_error", "human_takeover", "requirement_unmet", "portal_not_lit"]
+  },
+  "reset_steps": [
+    { "command": "execute in minecraft:overworld run tp {username} 1.5 64 -3.5", "verify": { "path": "self.position", "equals": { "x": 1.5, "y": 64, "z": -3.5 } } },
+    { "command": "gamemode survival {username}", "verify": { "path": "facts.dimension", "equals": "overworld" } },
+    { "command": "fill -4 63 -6 7 63 5 minecraft:stone", "verify": { "path": "facts.nearest_blocks.stone.type", "equals": "stone" } },
+    { "command": "fill -4 64 -6 7 68 5 minecraft:air", "verify": { "path": "facts.dimension", "equals": "overworld" } },
+    { "command": "fill 0 63 0 3 67 0 minecraft:obsidian", "verify": { "path": "facts.nearest_blocks.obsidian.type", "equals": "obsidian" } },
+    { "command": "fill 1 64 0 2 66 0 minecraft:air", "verify": { "path": "facts.nearest_blocks.obsidian.type", "equals": "obsidian" } },
+    { "command": "clear {username}", "verify": { "path": "inventory.flint_and_steel", "equals": 0 } },
+    { "command": "item replace entity {username} weapon.mainhand with minecraft:flint_and_steel 1", "verify": { "path": "self.held_item", "equals": "flint_and_steel" } }
+  ],
+  "evaluation": null
+}

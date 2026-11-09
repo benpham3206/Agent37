@@ -2,6 +2,15 @@ import test from 'node:test'; import assert from 'node:assert/strict'; import { 
 test('priority and emergency release',()=>{const a=new ActionArbiter({retreatHealth:4,maxDurationMs:10000});a.set('skill',{attack:true});a.set('human',{forward:true});assert.equal(a.tick().source,'human');assert.equal(a.tick({health:3}).source,'survival');a.emergencyStop();assert.equal(a.tick().source,'emergency');});
 test('camera and hotbar are bounded',()=>{const a=new ActionArbiter();a.set('human',{mouse_dx:100,hotbar:30});assert.equal(a.tick().action.mouse_dx,1);assert.equal(a.tick().action.hotbar,8);});
 test('dig keeps only integer block coordinates',()=>{assert.deepEqual(sanitizeAction({dig:{x:1,y:64,z:-2,extra:true}}).dig,{x:1,y:64,z:-2});assert.equal(sanitizeAction({dig:{x:1.5,y:64,z:-2}}).dig,undefined);});
+test('interact keeps integer block coordinates and one axis-aligned face',()=>{
+  const target={x:1,y:63,z:-2,face:{x:0,y:1,z:0,extra:true},extra:true};
+  const sanitized=sanitizeAction({hotbar:4,interact:target});
+  assert.deepEqual(sanitized.interact,{x:1,y:63,z:-2,face:{x:0,y:1,z:0}});
+  assert.equal(sanitized.hotbar,4);
+  target.face.y=-1; assert.equal(sanitized.interact.face.y,1);
+  for(const interact of [null,{}, {x:1.5,y:63,z:0,face:{x:0,y:1,z:0}}, {x:1,y:NaN,z:0,face:{x:0,y:1,z:0}}, {x:1,y:63,z:Infinity,face:{x:0,y:1,z:0}}, {x:1,y:63,z:0}, ...[{x:0,y:0,z:0},{x:1,y:1,z:0},{x:0,y:0.5,z:0},{x:2,y:0,z:0}].map(face=>({x:1,y:63,z:0,face}))]) assert.equal(sanitizeAction({interact}).interact,undefined);
+  const arbiter=new ActionArbiter(); arbiter.set('skill',sanitized); assert.deepEqual(arbiter.tick().action.interact,sanitized.interact); arbiter.release(); assert.equal(arbiter.tick().action.interact,undefined);
+});
 test('skill movement is gated by missing/deep terrain while teacher remains usable',()=>{const terrain={support_grid:[[{}, {}, {}],[{}, {available:true,drop_depth:0}, {available:true,drop_depth:0}],[{}, {available:false}, {}]],hazards:{deep_drop:true}};const a=new ActionArbiter();a.set('skill',{forward:true,left:true,jump:true,sprint:true});const gated=a.tick({terrain});assert.equal(gated.action.forward,false);assert.equal(gated.action.left,false);assert.equal(gated.action.jump,false);a.set('human',{forward:true,jump:true});assert.equal(a.tick({terrain}).source,'human');assert.equal(a.tick({terrain}).action.forward,true);});
 test('direct terrain gate preserves idle when unavailable',()=>{const x=gateSkillTerrain({forward:true,sprint:true},{support_grid:null,hazards:{}});assert.equal(x.forward,false);assert.equal(x.sprint,true);});
 test('a fresh control session works after the prior skill session times out',()=>{let now=0;const a=new ActionArbiter({maxDurationMs:1000,now:()=>now});a.set('skill',{forward:true});now=1001;assert.equal(a.tick().reason,'timeout');a.set('skill',{attack:true});const fresh=a.tick();assert.equal(fresh.source,'skill');assert.equal(fresh.action.attack,true);});

@@ -100,7 +100,7 @@ function port(value) {
 
 // Uses the existing runtime, never a second source of direct Mineflayer controls.
 // No connection or world commands happen unless --live was explicitly selected.
-export async function createLiveArena({ skill, dataDir, env = process.env, runtimeFactory = null, command = null }) {
+export async function createLiveArena({ skill, dataDir, env = process.env, runtimeFactory = null, command = null, expectedSeed = SEED }) {
   if (skill.requirements?.ci_only) throw new Error('this skill is test-only; use --ci');
   if (env.A37_EVAL_APPROVED_RESET !== '1') {
     throw new Error('live reset needs team approval; set A37_EVAL_APPROVED_RESET=1 only for the approved test world');
@@ -219,7 +219,7 @@ export async function createLiveArena({ skill, dataDir, env = process.env, runti
     } finally { events.off('failure', onFailure); }
     // A seeded run cannot claim the configured seed without checking the world.
     const reply = await rconCommand(rcon, 'seed');
-    if (!new RegExp(`\\[${SEED}\\]`).test(reply)) throw new Error(`approved world must use seed ${SEED}`);
+    if (!new RegExp(`\\[${expectedSeed}\\]`).test(reply)) throw new Error(`approved world must use seed ${expectedSeed}`);
     return arena;
   } catch (error) {
     arena.close();

@@ -1,0 +1,22 @@
+{
+  "name": "resource.mine_iron_ore",
+  "version": 1,
+  "implementation": { "type": "code", "artifact": "index.js", "entry_point": "run" },
+  "requirements": {
+    "description": "Collect one raw_iron using a selected stone, iron, diamond or netherite pickaxe and a free inventory slot. Default mode mines reachable ore. Input descent:true searches with adjacent one-block stairs using terrain.clearance and terrain.support_grid. It preserves stair floors and headroom, stops for detected fluids, caves and low health, and renews controls every 90 seconds. Smelting and crafting are not implemented. Live real trials override the default surface time limit to reserve setup and health-check time within ten minutes.",
+    "input": {}
+  },
+  "success_check": {
+    "time_limit_ms": 45000,
+    "condition": { "path": "inventory.raw_iron", "increase_by": 1 },
+    "failure_conditions": ["death", "execution_error", "human_takeover", "requirement_unmet"]
+  },
+  "reset_steps": [
+    { "command": "tp {username} 0.5 64 0.5", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "gamemode survival {username}", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "clear {username}", "verify": { "path": "inventory.raw_iron", "equals": 0 } },
+    { "command": "item replace entity {username} hotbar.0 with minecraft:stone_pickaxe", "verify": { "path": "inventory.stone_pickaxe", "equals": 1 } },
+    { "command": "setblock 3 64 0 minecraft:iron_ore", "verify": { "path": "facts.nearest_blocks.iron_ore.type", "equals": "iron_ore" } }
+  ],
+  "evaluation": null
+}

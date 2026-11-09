@@ -5,3 +5,4 @@ logs/
 *.log
 bridge-data/
 bridge/work/
+e2e-results/

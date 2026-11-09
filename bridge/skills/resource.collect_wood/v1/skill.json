@@ -1,0 +1,24 @@
+{
+  "name": "resource.collect_wood",
+  "version": 1,
+  "implementation": { "type": "code", "artifact": "index.js", "entry_point": "run" },
+  "requirements": {
+    "description": "Explore surface terrain and collect any reported tree logs. Needs inventory, position, nearest_blocks and terrain observations. The e2e runner derives wood.goal_reached from the real inventory and requested count. No starting tools required.",
+    "input": { "count": 5 }
+  },
+  "success_check": {
+    "time_limit_ms": 180000,
+    "condition": { "path": "wood.goal_reached", "equals": true },
+    "failure_conditions": ["bot_death", "human_takeover", "execution_error", "stuck", "explore_timeout", "requirement_unmet"]
+  },
+  "reset_steps": [
+    { "command": "gamemode survival {username}", "verify": { "path": "self.health", "equals": 20 } },
+    { "command": "fill -8 63 -8 12 63 8 minecraft:grass_block", "verify": { "path": "self.health", "equals": 20 } },
+    { "command": "fill -8 64 -8 12 72 8 minecraft:air", "verify": { "path": "self.health", "equals": 20 } },
+    { "command": "tp {username} 0.5 64 0.5", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "clear {username}", "verify": { "path": "inventory.oak_log", "equals": 0 } },
+    { "command": "fill 4 64 0 4 68 0 minecraft:oak_log", "verify": { "path": "facts.nearest_blocks.oak_log.type", "equals": "oak_log" } },
+    { "command": "fill 9 64 0 9 68 0 minecraft:birch_log", "verify": { "path": "facts.nearest_blocks.birch_log.type", "equals": "birch_log" } }
+  ],
+  "evaluation": null
+}
