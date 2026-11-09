@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRun, countLogs } from './index.js';
+import { createRun, countLogs, timeLimitFor } from './index.js';
 import { SkillRegistry } from '../../registry.js';
 import { ActionArbiter } from '../../../arbiter.js';
 import { EventEmitter } from 'node:events';
@@ -298,4 +298,58 @@ test('near runner records wrong seed, server loss, failed setup and death and al
     assert.equal(JSON.parse([...f.files.values()][0]).passed, false);
     if (mode === 'server-down') assert.equal(f.commands.filter((text) => text.startsWith('spreadplayers')).length, 0);
   }
+});
+
+test('the amount asked for is honored: it stops at count and leaves the rest of the tree', async () => {
+  const tree = () => [1, 2, 3, 4].map((y) => ({ type: 'oak_log', x: 2, y: 62 + y, z: 0 }));
+  for (const count of [2, 3]) {
+    const blocks = tree();
+    const result = await execute(fixture({ blocks }), { count });
+    assert.equal(result.outcome, 'success');
+    assert.equal(countLogs(result.after.inventory), count);
+    assert.equal(blocks.length, 4 - count, 'only the asked-for logs were mined');
+  }
+});
+
+test('a count outside 1 to 64 or not a whole number is rejected before any action', async () => {
+  for (const count of [0, -1, 1.5, 65, 100, '3', NaN, Infinity]) {
+    const f = fixture({ blocks: [{ type: 'oak_log', x: 2, y: 64, z: 0 }] });
+    const result = await execute(f, { count });
+    assert.equal(result.reason, 'requirement_unmet:count', String(count));
+    assert.equal(f.actions.length, 0);
+    assert.equal(f.releases(), 1);
+  }
+  const f = fixture({ inventory: { oak_log: 64 } });
+  assert.equal((await execute(f, { count: 64 })).outcome, 'success');
+});
+
+test('the time limit is proportional to count and matches the old limit at the default of 5', async () => {
+  assert.equal(timeLimitFor(5), 180000);
+  assert.ok(timeLimitFor(1) < timeLimitFor(2) && timeLimitFor(2) < timeLimitFor(64));
+  assert.equal(timeLimitFor(64) - timeLimitFor(63), timeLimitFor(2) - timeLimitFor(1));
+  const ends = [];
+  for (const count of [1, 3]) {
+    const f = fixture({ stepMs: 1000, onAction(_a, { p }) { p.x += 2; } });
+    const result = await execute(f, { count });
+    assert.equal(result.reason, 'explore_timeout');
+    ends.push(f.now());
+  }
+  assert.ok(ends[0] >= timeLimitFor(1) && ends[0] < ends[1] && ends[1] >= timeLimitFor(3), String(ends));
+});
+
+test('it finishes the logs it can dig from where it stands before walking to another tree', async () => {
+  const near = { type: 'oak_log', x: 2, y: 64, z: 1 };
+  const lowerOther = { type: 'birch_log', x: 2, y: 61, z: 0 };
+  const f = fixture({ blocks: [lowerOther, near] });
+  await execute(f, { count: 2 });
+  const first = f.actions.find((a) => a.dig);
+  assert.deepEqual(first.dig, { x: 2, y: 64, z: 1 });
+  assert.ok(!f.actions.slice(0, f.actions.indexOf(first)).some((a) => a.forward), 'no walking before the reachable log is dug');
+});
+
+test('it walks and never sprints', async () => {
+  const f = fixture({ blocks: [{ type: 'oak_log', x: 9, y: 64, z: 0 }] });
+  await execute(f, { count: 1 });
+  assert.ok(f.actions.some((a) => a.forward));
+  assert.ok(f.actions.every((a) => a.sprint !== true));
 });

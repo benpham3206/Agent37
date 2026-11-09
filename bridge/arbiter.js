@@ -6,6 +6,9 @@ export function sanitizeAction(input = {}) {
   a.hotbar = Number.isInteger(input.hotbar) ? Math.max(0, Math.min(8, input.hotbar)) : 0;
   for (const k of ['mouse_dx','mouse_dy','yaw_delta','pitch_delta']) a[k] = Number.isFinite(input[k]) ? Math.max(-1, Math.min(1, input[k])) : 0;
   const d=input.dig; if(d&&typeof d==='object'&&['x','y','z'].every(k=>Number.isInteger(d[k]))) a.dig={x:d.x,y:d.y,z:d.z};
+  const c=input.craft; if(c&&typeof c.id==='string'&&/^[a-zA-Z0-9_.:-]{1,128}$/.test(c.id)&&typeof c.name==='string'&&/^[a-z][a-z0-9_]{0,63}$/.test(c.name)&&Number.isSafeInteger(c.count)&&c.count>0&&c.count<=64&&(c.table===undefined||(c.table&&['x','y','z'].every(k=>Number.isSafeInteger(c.table[k]))))) a.craft={id:c.id,name:c.name,count:c.count,...(c.table?{table:{x:c.table.x,y:c.table.y,z:c.table.z}}:{})};
+  if(typeof input.equip==='string'&&/^[a-z][a-z0-9_]{0,63}$/.test(input.equip)) a.equip=input.equip;
+  if(Number.isSafeInteger(input.attack_entity)&&input.attack_entity>=0) a.attack_entity=input.attack_entity;
   const i=input.interact, f=i?.face; if(i&&['x','y','z'].every(k=>Number.isInteger(i[k]))&&f&&['x','y','z'].every(k=>Number.isInteger(f[k]))&&Math.abs(f.x)+Math.abs(f.y)+Math.abs(f.z)===1) a.interact={x:i.x,y:i.y,z:i.z,face:{x:f.x,y:f.y,z:f.z}};
   return a;
 }

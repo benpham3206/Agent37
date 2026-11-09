@@ -19,6 +19,26 @@ export function buildTerrainObservation(bot, { environmentLabel = null, target =
   const cell=(rz,rx)=>support_grid[rz+1]?.[rx+1]??null;
   return {dimension:bot?.game?.dimension??null,biome:bot?.biome??null,environment_label:environmentLabel,support_grid,clearance,hazards,cover_samples,support_center:center?.solid==null?null:Number(center.solid),support_forward:cell(1,0)?.solid??null,support_back:cell(-1,0)?.solid??null,support_left:cell(0,-1)?.solid??null,support_right:cell(0,1)?.solid??null,drop_forward:cell(1,0)?.drop_depth??null,drop_back:cell(-1,0)?.drop_depth??null,drop_left:cell(0,-1)?.drop_depth??null,drop_right:cell(0,1)?.drop_depth??null,clearance_forward:clearance.forward?.body_clear&&clearance.forward?.head_clear?1:0,clearance_back:clearance.back?.body_clear&&clearance.back?.head_clear?1:0,clearance_left:clearance.left?.body_clear&&clearance.left?.head_clear?1:0,clearance_right:clearance.right?.body_clear&&clearance.right?.head_clear?1:0,hazard_near:Number(Object.values(hazards).some(Boolean)),support:center?.solid==null?null:Number(center.solid),drop:center?.drop_depth??null,clearance_score:Object.values(clearance).filter(x=>x.available).length/4,hazard:Number(Object.values(hazards).some(Boolean)),solid_ahead:ahead?.solid??null,liquid:Boolean(hazards.lava),slope:null};
 }
+// Compact, compass-labelled view of what the bot stands on and what lies around it, from the terrain grid.
+// An open_below cell has no solid support (an edge). "drop" is the terrain's own drop_depth.
+export function compactSurroundings(terrain, yaw = null) {
+  const g = terrain?.support_grid, c = terrain?.clearance;
+  if (!Array.isArray(g) || !c) return null;
+  const centre = g[1]?.[1];
+  const cell = { forward: g[2]?.[1], back: g[0]?.[1], left: g[1]?.[0], right: g[1]?.[2] };
+  const vec = Number.isFinite(yaw) ? { forward: [-Math.sin(yaw), -Math.cos(yaw)], back: [Math.sin(yaw), Math.cos(yaw)],
+    left: [-Math.cos(yaw), Math.sin(yaw)], right: [Math.cos(yaw), -Math.sin(yaw)] } : null;
+  const label = (dir) => !vec ? dir : Math.abs(vec[dir][0]) > Math.abs(vec[dir][1])
+    ? (vec[dir][0] > 0 ? 'east' : 'west') : (vec[dir][1] > 0 ? 'south' : 'north');
+  const around = {};
+  for (const dir of ['forward', 'back', 'left', 'right']) {
+    const s = cell[dir], k = c[dir];
+    around[label(dir)] = { below: s?.support ?? null, open_below: s ? !s.solid : null, drop: s?.drop_depth ?? null,
+      body: k?.body ?? null, head: k?.head ?? null };
+  }
+  return { standing_on: centre?.support ?? null, standing_solid: centre ? Boolean(centre.solid) : null,
+    compass: vec ? 'north is -z, east is +x' : 'relative to facing', around };
+}
 export function buildObservation(bot, target = null, { hostiles = [], projectiles = [], lineOfSight = () => true, tick = 0, selector = {}, recentEvents = [] } = {}) {
   const selfPos = vec(bot?.entity?.position), selfVel = vec(bot?.entity?.velocity) ?? { x: 0, y: 0, z: 0 };
   let targetState = null;
@@ -106,6 +126,7 @@ export function buildFacts(bot, { radius = 16, watched = WATCHED_BLOCKS, sounds 
     health: Number.isFinite(bot?.health) ? bot.health : null,
     food: Number.isFinite(bot?.food) ? bot.food : null,
     inventory, nearest_blocks, nearby_mobs, sounds, radius,
+    surroundings: pos ? compactSurroundings(buildTerrainObservation(bot), bot.entity?.yaw) : null,
     time_of_day: Number.isFinite(tod) ? tod : null,
     is_day: typeof bot?.time?.isDay === 'boolean' ? bot.time.isDay : (Number.isFinite(tod) ? tod < 13000 || tod >= 23000 : null),
   };

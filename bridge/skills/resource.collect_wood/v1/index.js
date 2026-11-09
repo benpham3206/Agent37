@@ -3,6 +3,9 @@ import { aimDelta, angularError, wrapRadians } from '../../../geometry.js';
 
 export const countLogs = (inventory) => Object.entries(inventory ?? {})
   .reduce((count, [name, amount]) => count + (name.endsWith('_log') && Number.isFinite(amount) ? amount : 0), 0);
+export const COUNT_MAX = 64;
+// 30 s of base time plus 30 s per log: 180000 ms for the default of 5.
+export const timeLimitFor = (count) => 30000 + 30000 * count;
 const horizontal = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const key = (p) => `${p.x},${p.y},${p.z}`;
 const center = (p) => ({ x: p.x + 0.5, y: p.y + 0.5, z: p.z + 0.5 });
@@ -13,6 +16,12 @@ function logsIn(observation) {
     .filter(([name, block]) => name.endsWith('_log') && block &&
       [block.dx, block.dy, block.dz].every(Number.isFinite))
     .map(([type, b]) => ({ type, x: Math.round(p.x + b.dx), y: Math.round(p.y + b.dy), z: Math.round(p.z + b.dz) }));
+}
+
+// Close enough to dig from where the bot stands: within 2.25 blocks sideways and 4.35 from the eye.
+function canDig(p, block) {
+  const c = center(block);
+  return horizontal(p, c) <= 2.25 && Math.hypot(c.x - p.x, c.y - p.y - 1.62, c.z - p.z) <= 4.35;
 }
 
 function passage(terrain, direction = 'forward') {
@@ -30,7 +39,7 @@ function passage(terrain, direction = 'forward') {
   };
 }
 
-export function createRun({ tickMs = 50, now = () => performance.now(), timeLimitMs = 180000 } = {}) {
+export function createRun({ tickMs = 50, now = () => performance.now(), timeLimitMs = null } = {}) {
   return async function run(bot, input = {}, { signal }) {
     const started = now();
     let before;
@@ -39,7 +48,8 @@ export function createRun({ tickMs = 50, now = () => performance.now(), timeLimi
       before = bot.observe();
       const goal = input.count ?? 5;
       const finish = (outcome, reason) => ({ outcome, reason, elapsed_ms: Math.max(0, now() - started), before, after: bot.observe() });
-      if (!Number.isSafeInteger(goal) || goal < 1) return finish('failure', 'requirement_unmet:count');
+      if (!Number.isSafeInteger(goal) || goal < 1 || goal > COUNT_MAX) return finish('failure', 'requirement_unmet:count');
+      const limit = timeLimitMs ?? timeLimitFor(goal);
       let state = { kind: 'explore' }, heading = before.self?.yaw ?? 0;
       let lastProgress = started, lastLogs = countLogs(before.inventory), lastRenew = started;
       let anchor = before.self?.position, anchorAt = started, detourUntil = 0, turns = 0;
@@ -53,7 +63,7 @@ export function createRun({ tickMs = 50, now = () => performance.now(), timeLimi
         }
         const count = countLogs(o.inventory);
         if (count >= goal) return finish('success', 'wood_collected');
-        if (time - started >= timeLimitMs) return finish('timeout', 'explore_timeout');
+        if (time - started >= limit) return finish('timeout', 'explore_timeout');
         if (count > lastLogs) { lastProgress = time; lastLogs = count; }
         if (time - lastRenew >= 115000) { bot.releaseControls(); lastRenew = time; }
         const candidates = logsIn(o);
@@ -90,10 +100,14 @@ export function createRun({ tickMs = 50, now = () => performance.now(), timeLimi
           heading = wrapRadians(heading + 1.7);
         }
         if (state.kind === 'explore' && time >= detourUntil) {
-          const target = candidates.filter((b) => (ignored.get(key(b)) ?? 0) <= time &&
-            b.y >= p.y - 3 && b.y <= p.y + 4)
+          const open = candidates.filter((b) => (ignored.get(key(b)) ?? 0) <= time);
+          // Finish the tree it started: a log it can already dig from here comes before any walk to another one.
+          const reachable = open.filter((b) => canDig(p, b)).sort((a, b) => a.y - b.y || horizontal(p, center(a)) - horizontal(p, center(b)))[0];
+          const target = reachable ?? open.filter((b) => b.y >= p.y - 3 && b.y <= p.y + 4)
             .sort((a, b) => horizontal(p, a) - horizontal(p, b) || a.y - b.y)[0];
-          if (target) state = { kind: 'approach', target, since: time };
+          if (reachable) {
+            state = { kind: 'dig', target: reachable, since: time };
+          } else if (target) state = { kind: 'approach', target, since: time };
         }
 
         let action;
@@ -120,9 +134,7 @@ export function createRun({ tickMs = 50, now = () => performance.now(), timeLimi
             jump: terrain.step && !terrain.unsafe, yaw_delta: Math.max(-0.18, Math.min(0.18, steering * 0.65)),
             pitch_delta: Math.max(-0.14, Math.min(0.14, -(o.self.pitch ?? 0) * 0.65)) };
           if (state.kind === 'approach' && time >= detourUntil) {
-            const eye = { ...p, y: p.y + 1.62 };
-            const reach = Math.hypot(target.x - eye.x, target.y - eye.y, target.z - eye.z);
-            if (horizontal(p, target) <= 2.25 && reach <= 4.35) {
+            if (canDig(p, state.target)) {
               state = { kind: 'dig', target: state.target, since: time };
               action = { dig: { x: state.target.x, y: state.target.y, z: state.target.z } };
             }

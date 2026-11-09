@@ -517,3 +517,62 @@ test('reaching the Nether below full unassisted depth still reports FAIL', async
   assert.equal(run.status, 'FAIL');
   assert.equal(report.passed, false);
 });
+
+// Slows each RCON reply so the 5 s sampler gets ticks in a fast synthetic run.
+const slowArena = () => {
+  const arena = createChainCiArena();
+  const command = arena.command;
+  arena.command = async (text) => { await new Promise((r) => setTimeout(r, 2)); return command(text); };
+  return arena;
+};
+
+test('--jev parses to true and is off by default', () => {
+  assert.equal(parseOptions(['--ci', '--runs', '1']).jev, false);
+  assert.equal(parseOptions(['--ci', '--runs', '1', '--jev']).jev, true);
+});
+
+test('--jev records runtime.jev reads as report samples and leaves the flag off by default', async () => {
+  const hints = { model: 'jev-test', at: 1, situation: 'on_tree', situation_confidence: 0.9,
+    danger: 0.1, nearest_hostile: null };
+  let reads = 0;
+  const jev = { read() { reads++; return { enabled: true, hints, age_ms: 42, stale: false,
+    latency_ms: 17, errors: 0, last_error: null }; } };
+  const off = await evaluate({ arena: slowArena() });
+  assert.equal(off.jev_samples, undefined);
+  const report = await evaluate({ arena: slowArena(), jev: true, jevIntervalMs: 5, getJev: () => jev });
+  const count = report.jev_samples.length;
+  assert.ok(count >= 2, `expected samples, got ${count}`);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(reads, count);
+  for (const sample of report.jev_samples) {
+    assert.equal(typeof sample.at, 'string');
+    assert.equal(sample.enabled, true);
+    assert.equal(sample.situation, 'on_tree');
+    assert.equal(sample.situation_confidence, 0.9);
+    assert.equal('next_goal' in sample, false);
+    assert.equal(sample.danger, 0.1);
+    assert.equal(sample.nearest_hostile, null);
+    assert.equal(sample.age_ms, 42);
+    assert.equal(sample.stale, false);
+    assert.equal(sample.latency_ms, 17);
+    assert.equal(sample.errors, 0);
+    assert.equal(sample.last_error, null);
+  }
+  assert.equal(report.jev_samples.length, count, 'sampler timer is cleared when the run ends');
+});
+
+test('--jev with a null runtime.jev records one disabled sample without throwing', async () => {
+  const report = await evaluate({ arena: slowArena(), jev: true, jevIntervalMs: 1, getJev: () => null });
+  assert.equal(report.jev_samples.length, 1);
+  assert.equal(report.jev_samples[0].enabled, false);
+  assert.equal(report.jev_samples[0].situation, null);
+  assert.equal(report.runs[0].completed, true);
+});
+
+test('a throwing jev.read() is recorded as last_error and does not stop the run', async () => {
+  const jev = { read() { throw new Error('jev read failed'); } };
+  const report = await evaluate({ arena: slowArena(), jev: true, jevIntervalMs: 1, getJev: () => jev });
+  assert.ok(report.jev_samples.length >= 1);
+  assert.ok(report.jev_samples.every((s) => s.last_error === 'jev read failed'));
+  assert.equal(report.runs[0].completed, true);
+});

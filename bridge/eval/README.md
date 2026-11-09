@@ -167,7 +167,7 @@ approved region, and record every sent command in the row's `assistance` as `stu
 run, counts in `summary.watchdog` (`stuck_resets`, `mob_removals`, printed on the `E2E run`
 line), and bars that leg from `unassisted_depth`; the first assisted leg sets `first_blocker` to
 `watchdog_assist`. The launcher accepts `-Unstuck` and `-MobWatch`. Watchdog help is test-rig
-assistance and never counts as a natural pass.
+assistance and never counts as a natural pass. `--jev` is off by default; when set, the runner only records Jev's hints in `jev_samples` every five seconds and never changes what a skill or step does.
 Each cooperative run is bounded to ten minutes. The launcher terminates a stuck process after
 `runs * 10 + hold_minutes + 1` minutes; for the filmed command that bound is 11 minutes 30 seconds.
 A five-minute video is the target, not a guarantee; a run can finish sooner or reach the bound.
