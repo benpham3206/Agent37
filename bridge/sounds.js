@@ -21,8 +21,17 @@ export function soundDirection(self, yaw, pos) {
   return { direction: [horizontal, vertical].filter(Boolean).join(' ') || 'here', distance: round(Math.hypot(dx, dy, dz)) };
 }
 
+// The packet's soundId is the 0-based registry index, and minecraft-data's soundsArray is in registry
+// order (its own `id` is that index plus one). Returns e.g. 'entity.creeper.primed', or null.
+export const soundNameById = (registry, id) => Number.isInteger(id) ? registry?.soundsArray?.[id]?.name ?? null : null;
+
 export function createSoundTracker({ windowMs = 3000, max = 8, now = Date.now } = {}) {
   let heard = [];
+  const listeners = new Set();
+  // Runs at once, inside the packet handler, with the registry name of the sound.
+  const emit = (name, category, position) => {
+    for (const fn of [...listeners]) { try { fn({ name, category, position }); } catch { /* a listener must not break hearing */ } }
+  };
   const prune = (t) => { heard = heard.filter((s) => ago(s.at, t) <= windowMs).slice(-max); };
   function hear(name, category, position, source = null) {
     if (!position) return;
@@ -32,6 +41,7 @@ export function createSoundTracker({ windowMs = 3000, max = 8, now = Date.now } 
   }
   return {
     hear,
+    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     // Reads the raw sound packets. Mineflayer's soundEffectHeard maps numeric sound ids
     // through minecraft-data, which is off by one on 1.21.1 (a zombie groan comes out as
     // entity.zoglin.step), so for numeric ids we name the sound after the entity standing
@@ -51,11 +61,14 @@ export function createSoundTracker({ windowMs = 3000, max = 8, now = Date.now } 
       client.on('sound_effect', (p) => {
         const pos = { x: p.x / 8, y: p.y / 8, z: p.z / 8 };
         const inline = p.sound?.data?.soundName ?? p.soundName ?? null;
+        const exact = inline ?? soundNameById(bot.registry, p.sound?.soundId);
+        emit(String(exact ?? '').replace(/^minecraft:/, '') || null, p.soundCategory ?? soundCategory(inline), pos);
         const source = near(pos);
-        hear(inline ?? `${p.soundCategory ?? 'sound'}:${source ?? 'unknown'}`, p.soundCategory ?? soundCategory(inline), pos, source);
+        hear(exact ?? `${p.soundCategory ?? 'sound'}:${source ?? 'unknown'}`, p.soundCategory ?? soundCategory(inline), pos, source);
       });
       client.on('entity_sound_effect', (p) => {
         const e = bot.entities?.[p.entityId];
+        if (e?.position) emit(soundNameById(bot.registry, p.sound?.soundId), p.soundCategory ?? null, e.position);
         if (e?.position) hear(`${p.soundCategory ?? 'sound'}:${e.name ?? 'unknown'}`, p.soundCategory ?? null, e.position, e.name ?? null);
       });
       return this;

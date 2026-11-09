@@ -1,4 +1,4 @@
-// Jev perception: a fast, optional hint layer for the planner.
+// Jev perception: a fast, optional observation layer for the planner. It reports; it never chooses.
 // Jev (TypeSafe's System One model) answers typed questions about a state.
 // API: POST https://api.typesafe.ai/v1/systemone, Bearer key, {model,state,questions}
 // -> {model, answers:{id:{type,...}}, usage}. Docs: https://docs.typesafe.ai
@@ -6,37 +6,44 @@
 // the loop runs on its own timer, one request in flight, and any failure keeps
 // the planner on facts alone.
 export const JEV_URL = 'https://api.typesafe.ai/v1/systemone';
-export const GOALS = Object.freeze(['wood', 'iron', 'obsidian', 'lava_water', 'portal', 'none']);
-const GOAL_BLOCKS = {
-  wood: (n) => n.endsWith('_log') || n.endsWith('_stem'),
-  iron: (n) => n.endsWith('iron_ore'),
-  obsidian: (n) => n === 'obsidian',
-  lava_water: (n) => n === 'lava' || n === 'water',
-  portal: (n) => n === 'nether_portal',
-};
+export const SITUATIONS = Object.freeze(['on_flat_ground', 'on_tree', 'on_steep_ground', 'in_water', 'in_cave', 'boxed_in', 'other']);
+
+// What the bot just heard that is a threat. An observation only; the planner model decides what to do about it.
+export const HEARD_THREATS = Object.freeze(['none', 'creeper_fuse', 'explosion', 'hostile_nearby', 'other']);
 
 export function jevEnabled(env = process.env) {
   return env.AGENT37_JEV === '1' && Boolean(env.JEV_API_KEY);
 }
 
 // Small state: Jev bills per input token, so send only what the questions need.
+// Jev only observes. It is never told a goal; deciding what to do is the planner model's job.
 export function jevState(facts = {}) {
   const near = {};
   for (const [name, b] of Object.entries(facts.nearest_blocks ?? {})) near[name] = { distance: b.distance, dx: b.dx, dy: b.dy, dz: b.dz };
   return {
-    goal: 'reach the Nether: wood, tools, iron, obsidian, light a portal, enter',
-    dimension: facts.dimension ?? null, health: facts.health ?? null, is_day: facts.is_day ?? null,
+    dimension: facts.dimension ?? null, y: facts.position?.y ?? null, health: facts.health ?? null, is_day: facts.is_day ?? null,
     inventory: facts.inventory ?? {}, nearest_blocks: near,
+    surroundings: facts.surroundings ?? null,
     sounds: (facts.sounds ?? []).slice(0, 8).map((x) => ({ name: x.name, source: x.source ?? null, direction: x.direction, distance: x.distance, age_ms: x.age_ms })),
     nearby_mobs: (facts.nearby_mobs ?? []).slice(0, 8).map((m) => ({ type: m.type, hostile: m.hostile, distance: m.distance, dx: m.dx, dy: m.dy, dz: m.dz })),
   };
 }
 
 export const QUESTIONS = Object.freeze({
-  next_goal: { type: 'choice', instructions: 'Given `inventory` and `nearest_blocks`, which step of `goal` should the bot work on next?', criteria: {
-    wood: 'No logs in inventory and a log is nearby', iron: 'Has tools but not enough iron, iron ore nearby',
-    obsidian: 'Has iron kit, needs obsidian; obsidian nearby', lava_water: 'Needs obsidian and lava or water is nearby to make it',
-    portal: 'A nether portal is nearby or the kit is complete', none: 'Nothing useful is nearby' } },
+  situation: { type: 'choice', instructions: 'Using `surroundings` (`standing_on`, and per compass side the block `below`, whether it is `open_below`, and the `body` and `head` blocks), `nearest_blocks` and `y`, which describes where the bot is standing right now? Describe only; do not say what to do.', criteria: {
+    on_flat_ground: 'Standing on solid ground that is not leaves or a log, and every side has solid support below it',
+    on_tree: 'Standing on a leaves or log block, or the solid support below is leaves or logs on most sides',
+    on_steep_ground: 'Standing on solid ground but at least one side is open_below (an edge or drop) or has a block in the way at body height',
+    in_water: 'The block it stands on or the body blocks around it are water',
+    in_cave: 'Stone, deepslate or dirt at body and head height on two or more sides, and y is below 55',
+    boxed_in: 'Every side has a solid block at body or head height, so it cannot walk in any direction',
+    other: 'None of the above fit' } },
+  heard_threat: { type: 'choice', instructions: 'Using `sounds` (what the bot heard in the last 3 seconds; `name` is the Minecraft sound, `source` the mob standing where it played, `distance` in blocks), which threat did it just hear? Describe only; do not say what to do.', criteria: {
+    none: 'No sound in the list is a threat',
+    creeper_fuse: 'A sound named entity.creeper.primed: a creeper has lit its fuse close by',
+    explosion: 'A sound named entity.generic.explode or entity.creeper.explode, or any explosion',
+    hostile_nearby: 'A hostile mob made a sound (a groan, hiss, rattle, shoot or hurt sound) within about 12 blocks',
+    other: 'A threatening sound that is none of the above, such as lava popping or a fall' } },
   danger: { type: 'noul', instructions: 'Using `nearby_mobs` and `sounds` (things heard, maybe out of sight), is a hostile mob or lava close enough to threaten the bot in the next few seconds?' },
 });
 
@@ -52,20 +59,16 @@ export function createJevClient({ apiKey = process.env.JEV_API_KEY, model = proc
   };
 }
 
-// Turn Jev answers into planner hints, pointing the chosen goal at the nearest matching block.
+// Turn Jev answers into observations for the planner. Nothing here says what to do.
 export function toHints(reply, facts = {}, now = Date.now()) {
-  const goal = reply?.answers?.next_goal, danger = reply?.answers?.danger;
-  const choice = GOALS.includes(goal?.choice) ? goal.choice : null;
-  let where = null;
-  if (choice && GOAL_BLOCKS[choice]) {
-    const hits = Object.entries(facts.nearest_blocks ?? {}).filter(([n]) => GOAL_BLOCKS[choice](n)).sort((a, b) => a[1].distance - b[1].distance);
-    if (hits.length) where = { block: hits[0][0], distance: hits[0][1].distance, dx: hits[0][1].dx, dy: hits[0][1].dy, dz: hits[0][1].dz };
-  }
+  const sit = reply?.answers?.situation, danger = reply?.answers?.danger, heard = reply?.answers?.heard_threat;
   const hostile = (facts.nearby_mobs ?? []).find((m) => m.hostile) ?? null;
   return {
     model: reply?.model ?? null, at: now,
-    next_goal: choice, next_goal_confidence: Number.isFinite(goal?.confidence) ? goal.confidence : null, where,
+    situation: SITUATIONS.includes(sit?.choice) ? sit.choice : null,
+    situation_confidence: Number.isFinite(sit?.confidence) ? sit.confidence : null,
     danger: Number.isFinite(danger?.noul) ? danger.noul : null,
+    heard_threat: HEARD_THREATS.includes(heard?.choice) ? heard.choice : null,
     nearest_hostile: hostile ? { type: hostile.type, distance: hostile.distance, dx: hostile.dx, dy: hostile.dy, dz: hostile.dz } : null,
   };
 }

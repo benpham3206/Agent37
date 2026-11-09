@@ -46,7 +46,8 @@
         },
         "radius": { "type": "number", "minimum": 1 },
         "time_of_day": { "type": ["integer", "null"], "minimum": 0, "maximum": 23999 },
-        "is_day": { "type": ["boolean", "null"] }
+        "is_day": { "type": ["boolean", "null"] },
+        "surroundings": { "type": ["object", "null"], "description": "What the bot stands on and the blocks on each compass side; for Jev and the planner." }
       }
     }
   }

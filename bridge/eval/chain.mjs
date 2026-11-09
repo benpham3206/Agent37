@@ -16,8 +16,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const USERNAME = 'Vikram_bot';
 const OWNED_USERNAMES = new Set(['Ben_bot', 'Vikram_bot']);
 const RUN_LIMIT_MS = 600000;
-const PROTECTED_RADIUS = 20;
-const countLogs = (inventory) => Object.entries(inventory ?? {}).reduce((n, [name, count]) =>
+export const PROTECTED_RADIUS = 20;
+export const countLogs = (inventory) => Object.entries(inventory ?? {}).reduce((n, [name, count]) =>
   n + (name.endsWith('_log') && Number.isFinite(count) ? count : 0), 0);
 const centers = [-600, -300, 0, 300, 600].flatMap((z) =>
   [-600, -300, 0, 300, 600].map((x) => ({ x: 11000 + x, z: 5000 + z })));
@@ -33,7 +33,7 @@ export function createChainRegion(start = null) {
   return { center, radius: 400, plots, protected: true };
 }
 
-const DEFAULT_REGION = createChainRegion();
+export const DEFAULT_REGION = createChainRegion();
 
 export const STEPS = Object.freeze([
   { id: 'spawn', skills: [] },
@@ -45,8 +45,8 @@ export const STEPS = Object.freeze([
   { id: 'enter', skills: ['travel.enter_nether'] },
 ]);
 
-const UNSTUCK_WATCH_STEPS = new Set(['wood', 'iron']);
-const MOBWATCH_STEPS = new Set(['wood', 'iron', 'light']);
+export const UNSTUCK_WATCH_STEPS = new Set(['wood', 'iron']);
+export const MOBWATCH_STEPS = new Set(['wood', 'iron', 'light']);
 
 export function assertLiveSettings(env) {
   if (!['127.0.0.1', 'localhost'].includes(env.A37_MC_HOST)) {
@@ -61,7 +61,7 @@ export function assertLiveSettings(env) {
   if (env.A37_EVAL_APPROVED_RESET !== '1') throw new Error('approved live reset is required');
 }
 
-function ownedUsername(env) {
+export function ownedUsername(env) {
   const username = env.A37_EVAL_USERNAME;
   if (!username) return USERNAME;
   if (!OWNED_USERNAMES.has(username)) {
@@ -70,7 +70,7 @@ function ownedUsername(env) {
   return username;
 }
 
-function parseStart(value) {
+export function parseStart(value) {
   if (value == null) return null;
   const parts = value.split(',');
   if (parts.length !== 2 || parts.some((v) => !v.trim() || !Number.isFinite(Number(v)))) {
@@ -95,7 +95,7 @@ export function parseOptions(args, env = process.env) {
   const { values } = parseArgs({ args: rest, strict: true, allowPositionals: false, options: {
     live: { type: 'boolean' }, ci: { type: 'boolean' }, runs: { type: 'string' },
     'no-assist': { type: 'boolean' }, 'hold-minutes': { type: 'string' },
-    unstuck: { type: 'boolean' }, 'mob-watch': { type: 'boolean' },
+    unstuck: { type: 'boolean' }, 'mob-watch': { type: 'boolean' }, jev: { type: 'boolean' },
   } });
   const start = parseStart(startArgs[0]);
   const region = createChainRegion(start);
@@ -105,15 +105,15 @@ export function parseOptions(args, env = process.env) {
   if (Boolean(values.live) === Boolean(values.ci) || !Number.isInteger(runs) || runs < 1 ||
       runs > region.plots.length || !Number.isFinite(holdMinutes) ||
       holdMinutes < 0 || holdMinutes > 60) {
-    throw new Error('usage: node eval/chain.mjs (--live | --ci) --runs N [--start X,Z] [--no-assist] [--hold-minutes M] [--unstuck] [--mob-watch]');
+    throw new Error('usage: node eval/chain.mjs (--live | --ci) --runs N [--start X,Z] [--no-assist] [--hold-minutes M] [--unstuck] [--mob-watch] [--jev]');
   }
   if (values.live) assertLiveSettings(env);
   return { live: Boolean(values.live), ci: Boolean(values.ci), runs,
     noAssist: Boolean(values['no-assist']), holdMinutes, start, username, region,
-    unstuck: Boolean(values.unstuck), mobWatch: Boolean(values['mob-watch']) };
+    unstuck: Boolean(values.unstuck), mobWatch: Boolean(values['mob-watch']), jev: Boolean(values.jev) };
 }
 
-function snapshot(arena) {
+export function snapshot(arena) {
   const o = arena.observe();
   return structuredClone({
     position: o.self?.position ?? o.facts?.position ?? null,
@@ -126,7 +126,7 @@ function snapshot(arena) {
   });
 }
 
-function safeReason(error, password = process.env.A37_RCON_PASSWORD) {
+export function safeReason(error, password = process.env.A37_RCON_PASSWORD) {
   const message = String(error?.message ?? error);
   return password ? message.replaceAll(password, '[redacted]') : message;
 }
@@ -144,6 +144,24 @@ function scorerView(step, state, outcome) {
   const view = scoreNetherChain({ ...state.facts, position: state.position,
     dimension: state.dimension, inventory: state.inventory }).steps.find((s) => s.id === step);
   return { ...view, mismatch: (view.status === 'demo-ready') !== (outcome === 'success') };
+}
+
+// Jev observations are recorded for review only; no skill or step reads them.
+export function jevSample(jev, step, at = new Date().toISOString()) {
+  const empty = { at, step, enabled: false, situation: null, situation_confidence: null,
+    danger: null, heard_threat: null, nearest_hostile: null, age_ms: null, stale: null, latency_ms: null, errors: null, last_error: null };
+  if (!jev) return empty;
+  try {
+    const read = jev.read();
+    const hints = read.hints ?? {};
+    return { at, step, enabled: Boolean(read.enabled), situation: hints.situation ?? null,
+      situation_confidence: hints.situation_confidence ?? null,
+      danger: hints.danger ?? null, heard_threat: hints.heard_threat ?? null, nearest_hostile: hints.nearest_hostile ?? null,
+      age_ms: read.age_ms ?? null, stale: read.stale ?? null, latency_ms: read.latency_ms ?? null,
+      errors: read.errors ?? null, last_error: read.last_error ?? null };
+  } catch (error) {
+    return { ...empty, enabled: true, last_error: String(error?.message ?? error) };
+  }
 }
 
 export async function loadStep(step, registry = new SkillRegistry()) {
@@ -170,7 +188,7 @@ export async function loadStep(step, registry = new SkillRegistry()) {
     reason: step.skills.length ? `missing_v1:${step.skills.join('|')}` : 'no_skill_or_owner_for_portal_frame' };
 }
 
-function footPosition(arena, region = DEFAULT_REGION) {
+export function footPosition(arena, region = DEFAULT_REGION) {
   const p = snapshot(arena).position;
   if (!p || ![p.x, p.y, p.z].every(Number.isFinite)) throw new Error('position_unavailable');
   if (snapshot(arena).dimension !== 'overworld' ||
@@ -195,7 +213,7 @@ function needsRelocation(x1, z1, x2, z2, region) {
     region.protected && rectCenterDistance(x1, z1, x2, z2, region) < PROTECTED_RADIUS;
 }
 
-function allowedPosition(position, region) {
+export function allowedPosition(position, region) {
   if (!position || ![position.x, position.y, position.z].every(Number.isFinite)) return false;
   const distance = centerDistance(position.x, position.z, region);
   return distance <= region.radius && !(region.protected && distance < PROTECTED_RADIUS);
@@ -215,7 +233,7 @@ function relocationPlan(context, p) {
   };
 }
 
-function stagePlan(step, arena, context) {
+export function stagePlan(step, arena, context) {
   const region = context.region ?? DEFAULT_REGION;
   const username = context.username ?? USERNAME;
   const p0 = footPosition(arena, region);
@@ -242,7 +260,7 @@ function stagePlan(step, arena, context) {
   return { commands: [...relocate, ...(stages[step] ?? [])], target: block ? { position, block } : null };
 }
 
-function acceptedStageCommand(command, reply, username = USERNAME) {
+export function acceptedStageCommand(command, reply, username = USERNAME) {
   if (typeof reply !== 'string') return false;
   if (command.startsWith('fill ')) return /^Successfully filled \d+ blocks?/.test(reply) || reply === 'No blocks were filled';
   const setblock = command.match(/^setblock (-?\d+) (-?\d+) (-?\d+) /);
@@ -277,7 +295,7 @@ async function observeStageTarget(arena, stage, phase, deadline) {
   }
 }
 
-function grantCommands(step, arena, context) {
+export function grantCommands(step, arena, context) {
   const region = context.region ?? DEFAULT_REGION;
   const username = context.username ?? USERNAME;
   if (step === 'obsidian') {
@@ -317,7 +335,7 @@ function classify(natural, staged) {
   return staged ? 'skill_or_action' : 'natural_blocker';
 }
 
-function checkMutation(command, region) {
+export function checkMutation(command, region) {
   const parts = command.split(' ');
   if (!['fill', 'setblock'].includes(parts[0])) return;
   const [x1, , z1, x2 = x1, , z2 = z1] = parts.slice(1, parts[0] === 'fill' ? 7 : 4).map(Number);
@@ -404,7 +422,8 @@ export async function runChain({ arena, runs = 1, noAssist = false,
   username = USERNAME, region = DEFAULT_REGION,
   resolveSkill = (step) => loadStep(step), runLimitMs = RUN_LIMIT_MS,
   stageTimeoutMs = 5000, previousPositions = [], onProgress = () => {}, onSummary = console.log,
-  unstuck = false, mobWatch = false,
+  unstuck = false, mobWatch = false, jev = false, jevIntervalMs = 5000,
+  getJev = () => arena.runtimeJev?.() ?? null,
   createUnstuckWatchdog = makeUnstuckWatchdog, createMobWatchdog = makeMobWatchdog } = {}) {
   if (!OWNED_USERNAMES.has(username)) throw new Error('this runner owns only Ben_bot or Vikram_bot');
   const report = { synthetic: arena.synthetic, seed: arena.synthetic ? null : evalSeed(),
@@ -425,7 +444,7 @@ export async function runChain({ arena, runs = 1, noAssist = false,
     username,
     isAllowedPosition: (position) => allowedPosition(position, region),
   };
-  let activeRun = null, terminalFailure = null, tickPending = null;
+  let activeRun = null, activeStep = null, terminalFailure = null, tickPending = null;
   const failure = (reason) => {
     report.events.push({ at: new Date().toISOString(), run: activeRun, reason });
     terminalFailure = reason;
@@ -444,6 +463,18 @@ export async function runChain({ arena, runs = 1, noAssist = false,
     if (!tickPending) tickPending = sampleTicks().finally(() => { tickPending = null; });
   }, 30000);
   const previous = [...previousPositions];
+  let jevTimer = null;
+  const stopJev = () => { if (jevTimer) clearInterval(jevTimer); jevTimer = null; };
+  const recordJev = () => {
+    const current = getJev();
+    report.jev_samples.push(jevSample(current, activeStep));
+    if (!current) stopJev();
+  };
+  if (jev) {
+    report.jev_samples = [];
+    if (getJev()) jevTimer = setInterval(() => { try { recordJev(); } catch { stopJev(); } }, jevIntervalMs);
+    else recordJev();
+  }
   try {
     for (let run = 1; run <= runs; run++) {
       if (terminalFailure && terminalFailure !== 'bot_death') {
@@ -459,6 +490,7 @@ export async function runChain({ arena, runs = 1, noAssist = false,
       }
       terminalFailure = null;
       activeRun = run;
+      activeStep = null;
       const started = performance.now(), deadline = started + runLimitMs;
       const context = { frame: null, username, region };
       const summary = { run, unassisted_depth: 0, first_blocker: null, setup_commands: [],
@@ -477,6 +509,7 @@ export async function runChain({ arena, runs = 1, noAssist = false,
         previous.push(summary.start.position);
         await sampleTicks();
         for (const step of STEPS) {
+          activeStep = step.id;
           const loaded = step.id === 'spawn' ? null : await resolveSkill(step);
           const attemptBody = async (kind, plan, row) => {
             const { commands, target } = plan;
@@ -657,6 +690,7 @@ export async function runChain({ arena, runs = 1, noAssist = false,
     }
   } finally {
     clearInterval(timer);
+    stopJev();
     await tickPending;
     arena.events.off('failure', failure);
     arena.events.off('human_takeover', humanTakeover);
@@ -731,16 +765,16 @@ export function createChainCiArena({ region = DEFAULT_REGION, username = USERNAM
   return arena;
 }
 
-async function liveArena(env, dataDir, region = DEFAULT_REGION) {
+export async function liveArena(env, dataDir, region = DEFAULT_REGION, jev = false, runtimeOptions = {}) {
   assertLiveSettings(env);
-  process.env.AGENT37_JEV = '0';
+  process.env.AGENT37_JEV = jev ? '1' : '0';
   const { createRuntime } = await import('../server.js');
   const { rconCommand } = await import('../rcon.js');
   const { Vec3 } = await import('vec3');
   let runtime;
   const arena = await createLiveArena({ expectedSeed: evalSeed(), env, dataDir,
     skill: { requirements: {} }, runtimeFactory: async (config) => {
-      runtime = await createRuntime({ ...config, viewerPort: 3744 });
+      runtime = await createRuntime({ ...config, ...runtimeOptions, viewerPort: 3744 });
       return runtime;
     } });
   arena.command = (command) => rconCommand({ host: env.A37_RCON_HOST, port: Number(env.A37_RCON_PORT),
@@ -763,6 +797,9 @@ async function liveArena(env, dataDir, region = DEFAULT_REGION) {
     }
     return true;
   };
+  arena.runtimeJev = () => runtime?.jev ?? null;
+  arena.onSound = (listener) => runtime.sounds.subscribe(listener);
+  arena.advancements = () => runtime?.state?.().advancements ?? null;
   arena.gameMode = () => runtime.bot.game?.gameMode;
   arena.waitForChunks = () => runtime.bot.waitForChunksToLoad();
   arena.blockAt = (x, y, z) => runtime.bot?.blockAt?.(new Vec3(x, y, z)) ?? null;
@@ -830,7 +867,7 @@ export async function main(args = process.argv.slice(2), env = process.env) {
       }
     }
     if (options.live && !env.A37_RCON_PASSWORD) throw new Error('rcon_password_unavailable');
-    arena = options.ci ? createChainCiArena(options) : await liveArena(env, path.join(resultsDir, 'sessions'), options.region);
+    arena = options.ci ? createChainCiArena(options) : await liveArena(env, path.join(resultsDir, 'sessions'), options.region, options.jev);
   } catch (error) {
     const reason = `startup_error:${safeReason(error, env.A37_RCON_PASSWORD)}`;
     const report = { synthetic: options.ci, passed: false, requested_runs: options.runs,
@@ -850,7 +887,7 @@ export async function main(args = process.argv.slice(2), env = process.env) {
   try {
     report = await runChain({ arena, runs: options.runs, noAssist: options.noAssist,
       username: options.username, region: options.region,
-      unstuck: options.unstuck, mobWatch: options.mobWatch,
+      unstuck: options.unstuck, mobWatch: options.mobWatch, jev: options.jev,
       resolveSkill: options.ci ? (step) => ({ name: step.skills[0] ?? null,
         outcome: step.skills.length ? 'no_skill' : 'no_owner', reason: 'synthetic_missing_fixture' }) : undefined,
       previousPositions, onProgress: persist });
