@@ -137,3 +137,70 @@ Then use `node eval/run.mjs --skill NAME --version N --trials 20 --live`.
 The control page binds to localhost. Live mode reuses the existing bridge runtime
 and listens for its human-control messages. No live run is required for the CI
 fixture, and a passing CI run is not evidence that a real skill has learned anything.
+
+## Run the continuous Nether chain
+
+Run `node eval/chain.mjs --ci --runs 3` for synthetic reporting checks.
+For the approved local team world, use `node eval/chain.mjs --live --runs 3 --hold-minutes 60`
+with the live environment settings above. `A37_EVAL_USERNAME` selects the bot and accepts
+only `Vikram_bot` or `Ben_bot`. Add `--start=X,Z` with finite coordinates to center the run
+on a chosen spot, for example `--start=-8048,-7984` at the ruined portal site. Without
+`--start` the runner keeps the default region around x=11000, z=5000.
+Live runs also need `A37_RCON_PASSWORD`, `A37_EVAL_SEED` (the approved world's seed, kept out of
+this repo), and optionally `A37_E2E_RESULTS` for the copy of each live report (default `e2e-results/`).
+The same settings drive `e2e/portal.e2e.mjs`, `e2e/iron.e2e.mjs` and `e2e/wood.e2e.mjs`.
+A local launcher script sets them and passes `-Start 'X,Z'`, `-Bot`, `-Unstuck` and `-MobWatch` through.
+Live mode requires loopback Minecraft and RCON hosts, checks that the server reports `A37_EVAL_SEED`,
+and serves the viewer at `http://127.0.0.1:3744/`. Keep the bridge control page closed during trials.
+
+The ordered legs are spawn, wood, tools, iron, obsidian, light, and enter.
+One bot retains its inventory and world between legs; skill `reset_steps` never run.
+Failed natural attempts get a logged stage and retry, then a grant where specified.
+Missing v1 skills produce `no_skill`; the unowned obsidian leg produces `no_owner`.
+Neither staging nor grants count toward consecutive natural passes. `--no-assist` stops at the first natural failure.
+`--unstuck` and `--mob-watch` are off by default. `--unstuck` arms a stuck watchdog during the
+wood and iron legs; it teleports the bot to a verified safe spot after stillness, wandering, or a
+hazard underfoot. `--mob-watch` arms a mob watchdog during the wood, iron, and light legs; it
+kills a threatening hostile with `kill <uuid>`. Both tick about every 250 ms, act only inside the
+approved region, and record every sent command in the row's `assistance` as `stuck_reset` or
+`mob_removed`. Any watchdog command sets `watchdog_assisted` on the row and `assisted` on the
+run, counts in `summary.watchdog` (`stuck_resets`, `mob_removals`, printed on the `E2E run`
+line), and bars that leg from `unassisted_depth`; the first assisted leg sets `first_blocker` to
+`watchdog_assist`. The launcher accepts `-Unstuck` and `-MobWatch`. Watchdog help is test-rig
+assistance and never counts as a natural pass.
+Each cooperative run is bounded to ten minutes. The launcher terminates a stuck process after
+`runs * 10 + hold_minutes + 1` minutes; for the filmed command that bound is 11 minutes 30 seconds.
+A five-minute video is the target, not a guarantee; a run can finish sooner or reach the bound.
+Runs start in survival with an empty inventory. Without `--start`, retained live reports reserve
+previous starts and at most 25 plots fit the default region. With `--start`, the approved area is a
+radius of 400 blocks around the chosen point holding nine plots on a -240/0/240 offset grid,
+center first. Stage blocks, the flattened obsidian pad, and the portal frame stay inside that
+radius and at least 20 blocks from the chosen start point, leaving the ruined portal's natural
+obsidian untouched; every placement is a logged command. A stage or frame that would cross either
+limit is moved to a pad 40 blocks east of the chosen point first, with the move logged.
+
+Reports go to `eval/results/chain-<timestamp>.json` and, for live runs, `A37_E2E_RESULTS/chain/`. Rows include observations, commands, assistance,
+and scorer mismatches. Tick samples every 30 seconds help distinguish server lag from skill failure.
+Each run prints PASS or FAIL. PASS requires all seven natural legs and a confirmed Nether dimension.
+The final summary and process exit code reflect that result; missing work exits with code 1.
+Attempt snapshots precede grants; each grant has its own before and after snapshots and scorer view.
+Setup no longer teleports into the sky. The runner picks a plot at least 200 blocks from earlier
+starts, sends `gamemode survival`, `clear`, and `execute in minecraft:overworld run spreadplayers`
+naming only the selected bot, checks the reply, and retries when the server rejects a spread.
+It still verifies the observed outcome: a grounded overworld position inside the plot, an empty
+inventory, survival mode, loaded chunks, and settled facts. When every candidate is rejected or
+never relocates the bot, setup fails with `no_safe_approved_plot`.
+Wood and iron stages require a loaded target chunk, an accepted command reply, the expected block,
+and facts selecting that target before the skill starts. Verification waits at most five seconds.
+Failed setup produces `stage_failed:*`, `failure_type=stage_setup`, and `skill_started=false`.
+Stage evidence includes command acceptance, target block probes, chunk state, facts, and terrain snapshots.
+The natural wood leg requests five logs. Staging places a single oak_log and requests one
+additional log beyond the current inventory, so prior partial collection cannot satisfy it.
+The iron leg is invoked
+without a descent input. The tools leg stays a logged grant until `crafting.craft_wooden_pickaxe` v1 exists.
+The scorer reports resource readiness and can overstate obsidian and light; its view is not proof of completion.
+Natural attempts after earlier assistance carry `upstream_assisted=true` and do not prove an unassisted chain.
+`--hold-minutes` accepts fractions and keeps the bot connected and idle in its final observed
+dimension, including the Nether for a run that arrived there.
+Synthetic runs prove reporting behavior only. A missing entry skill cannot demonstrate a Nether crossing.
+The CLI's synthetic mode records missing fixtures instead of running installed live skills.
