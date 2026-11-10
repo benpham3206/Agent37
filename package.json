@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "verify": "node tools/verify/run.mjs",
+    "test:scanner": "node --test tools/verify/scan-secrets.test.js"
+  }
+}
