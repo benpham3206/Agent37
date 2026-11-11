@@ -1,0 +1,15 @@
+{
+  "status": "proposed: the lead confirms this list before it is final",
+  "goals": [
+    { "id": "minecraft:story/root", "title": "Minecraft", "skill": "crafting.craft_wooden_pickaxe",
+      "why": "Granted when a crafting_table enters the inventory, which happens partway through the pickaxe craft." },
+    { "id": "minecraft:adventure/kill_a_mob", "title": "Monster Hunter", "skill": "combat.kill_hostile",
+      "why": "Granted for killing any hostile mob." },
+    { "id": "minecraft:story/mine_stone", "title": "Stone Age", "skill": "resource.mine_stone", "planned": true,
+      "why": "Mine stone with the wooden pickaxe. No skill yet." },
+    { "id": "minecraft:story/smelt_iron", "title": "Acquire Hardware", "skill": "crafting.smelt_iron_ingot", "planned": true,
+      "why": "resource.mine_iron_ore gets raw_iron, but nothing smelts it yet." },
+    { "id": "minecraft:story/enter_the_nether", "title": "We Need to Go Deeper", "skill": "travel.enter_nether",
+      "why": "Granted on entering the Nether, the end of the team's Nether chain." }
+  ]
+}
