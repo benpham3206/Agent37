@@ -25,6 +25,16 @@ test('allows example files, empty passwords, and explicit placeholders', async (
   assert.deepEqual(scanText('code.js', `const ${passwordLine('env.A37_RCON_PASSWORD')} || readPassword();\nfunction check(${passwordLine('process.env.A37_RCON_PASSWORD')}) {}`), []);
 });
 
+test('allows all loopback addresses while rejecting other IPv4 ranges', async () => {
+  const { scanText } = await scanner;
+  for (const octets of [[127, 0, 0, 1], [127, 12, 34, 56], [127, 255, 255, 255]]) {
+    assert.deepEqual(scanText('config.txt', octets.join('.')), []);
+  }
+  for (const octets of [[126, 0, 0, 1], [128, 0, 0, 1], [192, 168, 1, 1]]) {
+    assert.deepEqual(scanText('config.txt', octets.join('.')).map(finding => finding.type), ['IPv4 address']);
+  }
+});
+
 test('CLI scans tracked files only and returns failure until a finding is removed', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'agent37-scan-'));
   const script = path.join(__dirname, 'scan-secrets.mjs');

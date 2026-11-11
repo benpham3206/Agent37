@@ -11,8 +11,8 @@ export function scanText(filename, text) {
   for (const [index, line] of text.split(/\r?\n/).entries()) {
     const types = new Set();
     for (const match of line.matchAll(/(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])/g)) {
-      // The unspecified address is a conventional configuration placeholder.
-      if (match[0] !== '0.0.0.0' && match[0].split('.').every(part => Number(part) <= 255)) types.add('IPv4 address');
+      // Allow the unspecified placeholder and the entire loopback range.
+      if (match[0] !== '0.0.0.0' && !match[0].startsWith('127.') && match[0].split('.').every(part => Number(part) <= 255)) types.add('IPv4 address');
     }
     for (const match of line.matchAll(/\bpassword\s*=\s*("[^"\r\n]*"|'[^'\r\n]*'|\$\{[^}\r\n]+\}|[^\s#;,)}]+)/gi)) {
       const value = match[1].replace(/^["']|["']$/g, '');

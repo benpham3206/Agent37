@@ -13,7 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '../..');
 const RESULTS = path.join(here, 'results');
-const J1_REF = 'origin/combat-kill-hostile-skill';
+const J1_REF = 'f58ce2226f4c14cedb69ecf78ab1c65e685592a4';
 const SEED = 37001, TRIALS = 20, TARGET = 16, LIMIT_MS = 60000;
 const CI_AT = '2000-01-01T00:00:00.000Z';
 const SUCCESS = 'Selected target death, bot alive, no human intervention or safety violation.';
@@ -35,7 +35,7 @@ export function parseOptions(args) {
 }
 
 function loadJ1() {
-  // Read the locally available remote ref without checking out, merging, or
+  // Read the pinned historical revision without checking out, merging, or
   // patching J1. Keep an exact, ignored snapshot so its relative imports work.
   const git = (...args) => execFileSync('git', args, { cwd: repo, maxBuffer: 4 * 1024 * 1024 });
   const revision = git('rev-parse', '--verify', `${J1_REF}^{commit}`).toString().trim();

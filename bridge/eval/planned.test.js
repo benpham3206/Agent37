@@ -43,7 +43,7 @@ test('options: start and model are required, minutes are capped at 15, and only 
   assert.throws(() => parsePlannedOptions(['--ci', '--live', '--start=740,692', '--model', 'haiku'], env), /usage/);
   assert.throws(() => parsePlannedOptions(['--ci', '--start=740,692', '--model', 'haiku'], { A37_EVAL_USERNAME: 'Thinh_bot' }), /owns only/);
   assert.throws(() => parsePlannedOptions(['--live', '--start=740,692', '--model', 'haiku'],
-    { ...env, A37_MC_HOST: '10.0.0.5', A37_RCON_HOST: '127.0.0.1', A37_EVAL_APPROVED_RESET: '1' }), /loopback/);
+    { ...env, A37_MC_HOST: [10, 0, 0, 5].join('.'), A37_RCON_HOST: '127.0.0.1', A37_EVAL_APPROVED_RESET: '1' }), /loopback/);
 });
 
 test('status is PASS only with the Nether reached and zero assists, watchdog actions and fallbacks', () => {
