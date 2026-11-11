@@ -1,0 +1,78 @@
+{
+  "name": "combat.engage",
+  "version": "second",
+  "implementation": {
+    "type": "model",
+    "model_path": "C:/Github/Agent37/ml/.test-artifacts/pytest/test_fixture_cli_bundle_under_0/second/model.onnx",
+    "metadata_path": "C:/Github/Agent37/ml/.test-artifacts/pytest/test_fixture_cli_bundle_under_0/second/metadata.json",
+    "model_sha256": "4e98178742ef18c1aae992b73bd2e6f52895bf586ebaf611e26767fe3c1218b0",
+    "loader": "bridge/policy.js:TacticalPolicy",
+    "description": "Bounded tactical combat requests through the control arbiter."
+  },
+  "requirements": {
+    "starting_conditions": "Alive, one selected hostile target, approved fixed arena setup.",
+    "equipment": "Record and hold the agreed weapon and shield setup fixed across trials.",
+    "allowed_environment": "Only arenas approved for frozen evaluation; none qualified yet.",
+    "observations": "Ordered policy features; unknown observations retain contract defaults.",
+    "input_contract": "contracts/policy.json",
+    "inputs": {
+      "observations": [
+        1,
+        184
+      ],
+      "dtype": "float32"
+    },
+    "outputs": [
+      "forward",
+      "back",
+      "left",
+      "right",
+      "jump",
+      "sprint",
+      "sneak",
+      "attack",
+      "use",
+      "disengage"
+    ],
+    "units": {
+      "distance": "blocks",
+      "velocity": "blocks/tick",
+      "angles": "radians"
+    },
+    "synthetic": true,
+    "promotion_eligible": false
+  },
+  "success_check": {
+    "success": "Selected target death, bot alive, no human intervention or safety violation.",
+    "failure": [
+      "bot death",
+      "target lost",
+      "pursuit limit",
+      "inference error",
+      "human intervention"
+    ],
+    "time_limit_s": 120,
+    "max_pursuit_distance_blocks": 32,
+    "retreat_health": 4,
+    "controls": "Arbiter owns writes; release controls on completion, cancellation, errors, or timeout."
+  },
+  "reset_steps": [
+    "Cancel invocation and release all controls.",
+    "Restore the approved arena terrain and remove leftover mobs, projectiles, and drops.",
+    "Restore fixed bot position, health, food, equipment, and inventory.",
+    "Restore the selected target and verify all setup before the next trial."
+  ],
+  "evaluation": {
+    "status": "untested",
+    "tested_version": null,
+    "test_settings": null,
+    "baseline": null,
+    "trial_count": 0,
+    "successes": null,
+    "failures": null,
+    "timeouts": null,
+    "human_interventions": null,
+    "results": null,
+    "note": "Offline cloning metrics are not arena evaluation. Synthetic data never qualifies for activation."
+  }
+}
