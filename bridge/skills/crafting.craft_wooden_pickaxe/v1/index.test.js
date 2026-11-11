@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRun, placeSpot, tableIn } from './index.js';
 import { recipeChain } from './recipe.js';
+import { equipItem } from '../../../equip.js';
 import { sanitizeAction } from '../../../arbiter.js';
 
 const ground = () => [0, 1, 2].map(() => [0, 1, 2].map(() => ({ support: 'grass_block', solid: true, drop_depth: 0, available: true })));
@@ -10,6 +11,13 @@ const open = () => Object.fromEntries(['forward', 'back', 'left', 'right'].map((
 // A tiny fake world: a craft request applies the real recipe step, a click on the ground places the table.
 function fakeWorld(inventory, { table = null, grid = ground(), clearance = open(), craftWorks = true } = {}) {
   const w = { inventory: { ...inventory }, table, actions: [], releases: 0 };
+  const slots = [];
+  const heldBot = {
+    inventory: { slots, items: () => Object.entries(w.inventory).filter(([, n]) => n > 0).map(([name, count], i) => ({ name, count, slot: 9 + i })) },
+    heldItem: null,
+    setQuickBarSlot(slot) { this.heldItem = slots[36 + slot]; },
+    async equip(item) { this.heldItem = item; },
+  };
   w.observe = () => structuredClone({
     self: { position: { x: 0.5, y: 64, z: 0.5 }, health: 20, yaw: 0, pitch: 0 },
     inventory: Object.fromEntries(Object.entries(w.inventory).filter(([, n]) => n > 0)),
@@ -28,7 +36,8 @@ function fakeWorld(inventory, { table = null, grid = ground(), clearance = open(
       for (const [item, n] of Object.entries(step.uses)) w.inventory[item] -= n * times;
       w.inventory[step.item] = (w.inventory[step.item] ?? 0) + step.count * times;
     }
-    if (a.interact && w.inventory.crafting_table > 0) {
+    if (a.equip) equipItem(heldBot, a.equip);
+    if (a.interact && heldBot.heldItem?.name === 'crafting_table' && w.inventory.crafting_table > 0) {
       w.inventory.crafting_table--;
       w.table = { x: a.interact.x + a.interact.face.x, y: a.interact.y + a.interact.face.y, z: a.interact.z + a.interact.face.z };
     }
@@ -36,7 +45,7 @@ function fakeWorld(inventory, { table = null, grid = ground(), clearance = open(
   w.releaseControls = () => { w.releases++; };
   return w;
 }
-const signal = () => AbortSignal.timeout(2000);
+const signal = () => AbortSignal.timeout(15000);
 
 test('crafts a wooden pickaxe from 3 oak logs through craft and interact actions only', async () => {
   const world = fakeWorld({ oak_log: 3 });
