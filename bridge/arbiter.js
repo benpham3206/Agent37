@@ -5,6 +5,11 @@ export function sanitizeAction(input = {}) {
   const a = emptyAction(); for (const k of BOOLS) a[k] = Boolean(input[k]);
   a.hotbar = Number.isInteger(input.hotbar) ? Math.max(0, Math.min(8, input.hotbar)) : 0;
   for (const k of ['mouse_dx','mouse_dy','yaw_delta','pitch_delta']) a[k] = Number.isFinite(input[k]) ? Math.max(-1, Math.min(1, input[k])) : 0;
+  const d=input.dig; if(d&&typeof d==='object'&&['x','y','z'].every(k=>Number.isInteger(d[k]))) a.dig={x:d.x,y:d.y,z:d.z};
+  const c=input.craft; if(c&&typeof c.id==='string'&&/^[a-zA-Z0-9_.:-]{1,128}$/.test(c.id)&&typeof c.name==='string'&&/^[a-z][a-z0-9_]{0,63}$/.test(c.name)&&Number.isSafeInteger(c.count)&&c.count>0&&c.count<=64&&(c.table===undefined||(c.table&&['x','y','z'].every(k=>Number.isSafeInteger(c.table[k]))))) a.craft={id:c.id,name:c.name,count:c.count,...(c.table?{table:{x:c.table.x,y:c.table.y,z:c.table.z}}:{})};
+  if(typeof input.equip==='string'&&/^[a-z][a-z0-9_]{0,63}$/.test(input.equip)) a.equip=input.equip;
+  if(Number.isSafeInteger(input.attack_entity)&&input.attack_entity>=0) a.attack_entity=input.attack_entity;
+  const i=input.interact, f=i?.face; if(i&&['x','y','z'].every(k=>Number.isInteger(i[k]))&&f&&['x','y','z'].every(k=>Number.isInteger(f[k]))&&Math.abs(f.x)+Math.abs(f.y)+Math.abs(f.z)===1) a.interact={x:i.x,y:i.y,z:i.z,face:{x:f.x,y:f.y,z:f.z}};
   return a;
 }
 export function gateSkillTerrain(action, terrain = null) {
@@ -19,14 +24,19 @@ export function gateSkillTerrain(action, terrain = null) {
   return out;
 }
 export class ActionArbiter {
-  constructor({ retreatHealth = 4, maxDurationMs = 120000 } = {}) { this.retreatHealth = retreatHealth; this.maxDurationMs = maxDurationMs; this.sources = new Map(); this.started = null; this.emergency = false; this.released = true; }
-  set(source, action, reason = 'requested') { if(this.released||this.started==null)this.started=Date.now(); this.sources.set(source, { action: sanitizeAction(action), reason, at: Date.now() }); this.released = false; }
+  // now() is injectable so tests can use a fake clock; it defaults to Date.now.
+  constructor({ retreatHealth = 4, maxDurationMs = 120000, now = Date.now } = {}) { this.retreatHealth = retreatHealth; this.maxDurationMs = maxDurationMs; this.now = now; this.sources = new Map(); this.started = null; this.emergency = false; this.released = true; }
+  set(source, action, reason = 'requested') { const t=this.now(); if(this.released||this.started==null)this.started=t; const since=this.sources.get(source)?.since ?? t; this.sources.set(source, { action: sanitizeAction(action), reason, at: t, since }); this.released = false; }
   release(reason = 'release') { this.sources.clear(); this.started=null; this.released = true; return { action: emptyAction(), source: 'idle', reason }; }
   emergencyStop(reason = 'emergency_stop') { this.emergency = true; return this.release(reason); }
   clearEmergency() { this.emergency = false; }
   tick({ health = null, terrain = null } = {}) {
     if (this.emergency) return { action: emptyAction(), source: 'emergency', reason: 'emergency_stop' };
-    if (this.started != null && Date.now() - this.started > this.maxDurationMs) return this.release('timeout');
+    // The time cap stops runaway automation (skill, mimic, navigation). A human
+    // driver is never cut off by it; their lock (lease) ends human control instead.
+    const t = this.now();
+    for (const [source, value] of this.sources) if (source !== 'human' && t - value.since > this.maxDurationMs) this.sources.delete(source);
+    if (this.started != null && this.sources.size === 0 && !this.released) return this.release('timeout');
     if (health != null && health <= this.retreatHealth) { this.sources.delete('human'); this.sources.delete('skill'); return { action: sanitizeAction({ back: true, sprint: true }), source: 'survival', reason: 'retreat_health' }; }
     let winner = { source: 'idle', reason: 'idle', action: emptyAction() }, best = 0;
     for (const [source, value] of this.sources) { const p = PRIORITY[source] ?? 1; if (p > best) { best = p; winner = { source, reason: value.reason, action: source==='skill'||source==='mimic' ? gateSkillTerrain(value.action,terrain) : value.action }; } }

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent37/action.schema.json",
+  "title": "Agent37 action (POST /api/action)",
+  "description": "One action. Fields match emptyAction()/sanitizeAction() in bridge/arbiter.js plus the inventory field. All fields are optional; missing ones are off. Unknown fields are rejected with 400. The action goes to the arbiter as source \"skill\".",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "forward": { "type": "boolean" }, "back": { "type": "boolean" }, "left": { "type": "boolean" }, "right": { "type": "boolean" },
+    "jump": { "type": "boolean" }, "sprint": { "type": "boolean" }, "sneak": { "type": "boolean" },
+    "attack": { "type": "boolean" }, "use": { "type": "boolean" },
+    "emergency_stop": { "type": "boolean" }, "manual_abort": { "type": "boolean" },
+    "hotbar": { "type": "integer", "minimum": 0, "maximum": 8 },
+    "mouse_dx": { "type": "number" }, "mouse_dy": { "type": "number" },
+    "yaw_delta": { "type": "number", "description": "Radians; the arbiter clamps to [-1, 1]." },
+    "pitch_delta": { "type": "number", "description": "Radians; the arbiter clamps to [-1, 1]." },
+    "inventory": { "type": "string", "enum": ["open", "close"], "description": "Applied at once, not through the arbiter." }
+  }
+}

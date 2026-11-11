@@ -1,0 +1,46 @@
+{
+  "name": "combat.kill_hostile",
+  "version": 1,
+  "implementation": {
+    "type": "code",
+    "artifact": "index.js",
+    "entry_point": "run"
+  },
+  "requirements": {
+    "description": "Kill one hostile mob of the chosen type with the existing bridge combat policy (TacticalPolicy in bridge/policy.js plus the bridge aim math), driven only through the runner's observe/requestAction/releaseControls interface. Baseline for J4; V4 learned combat is compared against it. Set input.target_type to pick the mob; zombie is the default, so this also covers the old combat.kill_zombie case.",
+    "combat": true,
+    "gear": ["iron_axe", "shield"],
+    "model": {
+      "env": "A37_COMBAT_CANDIDATE_DIR",
+      "files": ["model.onnx", "metadata.json"],
+      "runtime": "onnxruntime-node (optional dependency)",
+      "without_model": "The bridge has no non-model combat path, so the trial ends immediately as a failure with reason requirement_unmet:<detail>. Nothing crashes and no controls are sent."
+    },
+    "mob_risks": {
+      "zombie": "Trained and frozen-evaluated target in the combat contract. Lowest risk.",
+      "skeleton": "Evaluated in the combat contract. Ranged: shoots from distance, so time-to-close matters and shield use helps. Expect lower success than zombie.",
+      "spider": "Not in the policy's target features (no target_spider input), so the model sees it as an unknown target. Fast, jumps, and is short (aim point differs). Treat results as exploratory.",
+      "creeper": "Not in the policy's target features. Explodes about 1.5 s after getting close: it can kill the bot, destroys arena blocks, and gives no kill credit if it explodes. Use a sealed or regenerated arena; consider mobGriefing=false in the test world. Treat results as exploratory."
+    },
+    "input": {
+      "target_type": "zombie",
+      "allowed_targets": ["zombie", "skeleton", "spider", "creeper"]
+    }
+  },
+  "success_check": {
+    "time_limit_ms": 60000,
+    "time_budget_note": "Per-skill budget is 45-60 s; this skill uses the 60 s upper bound.",
+    "condition": { "path": "kills.hostile_total", "increase_by": 1 },
+    "failure_conditions": ["death", "execution_error", "human_takeover", "requirement_unmet"]
+  },
+  "reset_steps": [
+    { "command": "kill @e[tag=agent37_trial]", "verify": { "path": "trial.targets", "equals": 0 } },
+    { "command": "tp {username} 0.5 64 0.5", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "clear {username}", "verify": { "path": "inventory.iron_axe", "equals": 0 } },
+    { "command": "effect give {username} minecraft:instant_health 1 10", "verify": { "path": "self.health", "equals": 20 } },
+    { "command": "item replace entity {username} weapon.mainhand with minecraft:iron_axe", "verify": { "path": "self.held_item", "equals": "iron_axe" } },
+    { "command": "item replace entity {username} weapon.offhand with minecraft:shield", "verify": { "path": "self.offhand_item", "equals": "shield" } },
+    { "command": "summon minecraft:{target} 4.5 64 0.5 {Tags:[\"agent37_trial\"],PersistenceRequired:1b}", "verify": { "path": "trial.targets", "equals": 1 } }
+  ],
+  "evaluation": null
+}

@@ -106,7 +106,7 @@ export class ImitationSession {
     for(const file of files)try{const payload=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(payload.frames)||!payload.frames.length)continue;this.state='ready';this.id=payload.demonstration_id??path.basename(file,'.json');this.frames=payload.frames;this.startedAt=number(payload.started_at_ms,null);this.previous=this.frames.at(-1)?.state??null;this.path=file;return true;}catch{}
     return false;
   }
-  startObserve(now=Date.now()) { this.state='observing'; this.id=`demo-${now}-${Math.random().toString(36).slice(2,8)}`;this.frames=[];this.startedAt=now;this.previous=null;this.lastSwingAt=now;this.playStartedAt=null;this.playIndex=0;this.path=path.join(this.dir,`${this.id}.json`);return this.status(now); }
+  startObserve(now=Date.now()) { if(this.state==='observing')this.stopObserve(now);this.state='observing'; this.id=`demo-${now}-${Math.random().toString(36).slice(2,8)}`;this.frames=[];this.startedAt=now;this.previous=null;this.lastSwingAt=now;this.playStartedAt=null;this.playIndex=0;this.path=path.join(this.dir,`${this.id}.json`);return this.status(now); }
   observe(entity,recentEvents=[],now=Date.now()) {
     if(this.state!=='observing'||!entity)return null;
     if(now-this.startedAt>=this.maxObserveMs){this.stopObserve(now);return null;}
@@ -116,7 +116,7 @@ export class ImitationSession {
     const frame={t_ms:now-this.startedAt,state:{position:{x:number(entity.position?.x),y:number(entity.position?.y),z:number(entity.position?.z)},velocity:{x:number(entity.velocity?.x),y:number(entity.velocity?.y),z:number(entity.velocity?.z)},yaw:number(entity.yaw),pitch:number(entity.pitch),on_ground:entity.onGround??null,held_item:itemName(entity.heldItem??entity.equipment?.[0]),offhand_item:itemName(entity.equipment?.[1])},action};
     this.frames.push(frame);this.previous=frame.state;return frame;
   }
-  stopObserve(now=Date.now()) { if(this.state!=='observing')return this.status(now);this.state='ready';const payload={schema_version:1,demonstration_id:this.id,demonstrator:this.demonstrator,rate_hz:20,started_at_ms:this.startedAt,duration_ms:Math.max(0,now-this.startedAt),frames:this.frames};fs.writeFileSync(this.path,JSON.stringify(payload,null,2)+'\n');return this.status(now); }
+  stopObserve(now=Date.now()) { if(this.state!=='observing')return this.status(now);const payload={schema_version:1,demonstration_id:this.id,demonstrator:this.demonstrator,rate_hz:20,started_at_ms:this.startedAt,duration_ms:Math.max(0,now-this.startedAt),frames:this.frames};const tmp=`${this.path}.tmp`;fs.writeFileSync(tmp,JSON.stringify(payload,null,2)+'\n');fs.renameSync(tmp,this.path);this.state='ready';return this.status(now); }
   startMimic(now=Date.now()) { if(!this.frames.length)return false;if(this.state==='observing')this.stopObserve(now);this.state='mimicking';this.playStartedAt=now;this.playIndex=0;this.combatState={};return true; }
   mimicAction(now=Date.now(), observation=null, options={}) {
     if(this.state!=='mimicking')return null;

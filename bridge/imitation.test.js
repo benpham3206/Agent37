@@ -6,3 +6,51 @@ test('records a demonstration and replays its local actions',()=>{const root=fs.
 test('gates replay movement toward the live target',()=>{const action={forward:true,back:false,left:true,right:false,sprint:true};assert.deepEqual(gateMimicToTarget(action,{target:{distance:4}}),{...action,forward:true,back:false,left:false,right:false,sprint:true});assert.deepEqual(gateMimicToTarget(action,{target:{distance:2.2}}),{...action,forward:false,back:false,left:true,right:false,sprint:false});assert.deepEqual(gateMimicToTarget(action,{target:{distance:1.2}}),{...action,forward:false,back:true,left:false,right:false,sprint:false});});
 test('builds an aimed orbit action with range control and axe selection',()=>{const state={};const observation={self:{position:{x:0,y:0,z:0},yaw:0,pitch:0,velocity:{y:0},on_ground:true},target:{position:{x:0,y:0,z:-2.2},distance:2.2,aim_point:{x:0,y:1.2,z:-2.2},line_of_sight:true}};const action=buildTargetRelativeMimicAction({attack:true,sprint:true},observation,state,{axeHotbar:2});assert.equal(action.hotbar,2);assert.equal(action.right,true);assert.equal(action.left,false);assert.equal(action.forward,false);assert.equal(action.back,false);assert.equal(action.jump,true);assert.equal(action.attack,false);assert.equal(action.use,true);assert.ok(Math.abs(action.yaw_delta)<.001);});
 test('fires a pending attack only while descending and alternates after a full orbit',()=>{const state={orbitDirection:1,orbitTravel:2*Math.PI-.1,lastBearing:0};const grounded={self:{position:{x:0,y:0,z:0},yaw:0,pitch:0,velocity:{y:0},on_ground:true},target:{position:{x:.2,y:0,z:-2.2},distance:2.2,aim_point:{x:.2,y:1.2,z:-2.2},line_of_sight:true}};const jump=buildTargetRelativeMimicAction({attack:true},grounded,state,{axeHotbar:1});assert.equal(state.orbitDirection,-1);assert.equal(jump.left,true);assert.equal(jump.attack,false);assert.equal(jump.use,true);const falling={...grounded,self:{...grounded.self,velocity:{y:-.2},on_ground:false}};const hit=buildTargetRelativeMimicAction({},falling,state,{axeHotbar:1});assert.equal(hit.hotbar,1);assert.equal(hit.attack,true);assert.equal(hit.use,false);assert.equal(hit.jump,false);});
+
+test('preserves the current demonstration when observation is started again',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'agent37-imitation-restart-'));
+  try{
+    const session=new ImitationSession({dataDir:root,sessionId:'s'});
+    const entity={id:4,position:{x:1,y:2,z:3},velocity:{x:0,y:0,z:0},yaw:0,pitch:0,equipment:[]};
+    session.startObserve(1000);
+    session.observe(entity,[],1010);
+    const previousPath=session.path;
+    const previousId=session.id;
+
+    const restarted=session.startObserve(1020);
+
+    assert.equal(restarted.state,'observing');
+    assert.notEqual(restarted.demonstration_id,previousId);
+    assert.equal(restarted.frames,0);
+    assert.equal(session.frames.length,0);
+    assert.equal(JSON.parse(fs.readFileSync(previousPath,'utf8')).frames.length,1);
+  }finally{
+    fs.rmSync(root,{recursive:true,force:true});
+  }
+});
+
+test('keeps a failed demonstration save retryable',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'agent37-imitation-retry-'));
+  try{
+    const session=new ImitationSession({dataDir:root,sessionId:'s'});
+    const entity={id:4,position:{x:1,y:2,z:3},velocity:{x:0,y:0,z:0},yaw:0,pitch:0,equipment:[]};
+    session.startObserve(2000);
+    session.observe(entity,[],2010);
+    const savePath=session.path;
+    fs.mkdirSync(savePath);
+
+    assert.throws(()=>session.stopObserve(2020));
+    assert.equal(session.state,'observing');
+    assert.equal(session.frames.length,1);
+
+    fs.rmSync(savePath,{recursive:true,force:true});
+    const saved=session.stopObserve(2030);
+
+    assert.equal(saved.state,'ready');
+    assert.equal(saved.frames,1);
+    assert.equal(JSON.parse(fs.readFileSync(savePath,'utf8')).frames.length,1);
+    assert.equal(fs.existsSync(`${savePath}.tmp`),false);
+  }finally{
+    fs.rmSync(root,{recursive:true,force:true});
+  }
+});

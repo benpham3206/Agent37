@@ -1,6 +1,6 @@
 {
-  "project_name": "[Project Title]",
-  "purpose": "One sentence describing the main purpose of your project",
-  "short_description": "Write exactly 100 words describing your project. Include what problem you're solving, what technology you're using, who your target audience is, and what outcomes you expect. This description will appear on the club website project cards and should be engaging enough to make visitors want to learn more about your work. Keep it concise but informative.",
-  "semester": "fa25"
+  "project_name": "Agent37",
+  "purpose": "A Minecraft harness so AI agents can learn skills from player demonstrations and act through a fast observation/action bridge.",
+  "short_description": "Agent37 gives AI agents a Minecraft body they can sense and control in under a quarter second, with a browser takeover so people can demonstrate skills. The team is building structured observations, craft and combat skills, and a learning path toward bots that reach the Nether from a fresh spawn. The V4 learned combat model and dataset pipeline landed in Fall 2026. Planned next: a fast perception layer to feed the planner before the Nov 16 club showcase. Stack: Node.js, Mineflayer, optional ONNX. Built by the SJSU AI/ML Club for students and visitors who want to see autonomous Minecraft agents in action.",
+  "semester": "fa26"
 }
