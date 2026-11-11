@@ -5,25 +5,65 @@ import { boxEdges, cameraPoint, project } from './projection.js';
   const overlay = $('overlay');
   const viewer = $('viewer');
   const action = { forward:false, back:false, left:false, right:false, jump:false, sprint:false, sneak:false, attack:false, use:false, hotbar:0, mouse_dx:0, mouse_dy:0, yaw_delta:0, pitch_delta:0, emergency_stop:false, manual_abort:false };
-  let socket, state = {}, reconnectTimer, viewerPort, armed = false, capturePending = false, emergencyLatched = false, released = false, directAction = null, directUntil = 0;
+  let socket, state = {}, reconnectTimer, viewerPort, armed = false, capturePending = false, emergencyLatched = false, directAction = null, directUntil = 0;
+  let token = null, controllerId = null, pendingControl = null;
   const keys = new Map([['KeyW','forward'],['KeyS','back'],['KeyA','left'],['KeyD','right'],['Space','jump'],['ControlLeft','sprint'],['ControlRight','sprint'],['ShiftLeft','sneak'],['ShiftRight','sneak']]);
   const finite = value => Number.isFinite(value) ? value : 0;
-  const send = message => { if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); };
-  const active = () => armed && document.hasFocus() && !document.hidden && document.pointerLockElement === overlay && socket?.readyState === WebSocket.OPEN;
+  const send = message => { if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(token && message.type !== 'acquire' && message.type !== 'emergency_stop' ? { ...message, token } : message)); };
+  const active = () => token && armed && document.hasFocus() && !document.hidden && document.pointerLockElement === overlay && socket?.readyState === WebSocket.OPEN;
   const clearAction = () => { Object.keys(action).forEach(k => { if (typeof action[k] === 'boolean') action[k] = false; }); action.mouse_dx = action.mouse_dy = action.yaw_delta = action.pitch_delta = 0; };
-  const release = (emergency = false) => { clearAction(); armed = false; if (emergency) { emergencyLatched = true; send({type:'emergency_stop'}); } else if (!released) { released = true; send({type:'release'}); } };
-  const sendControl = () => { if(directAction){if(Date.now()<directUntil){released=false;send({type:'control',action:{...directAction}});directAction.yaw_delta=directAction.pitch_delta=0;return;}send({type:'control',action:{...emptyAction()}});directAction=null;release();return;} if (!active()) { release(); return; } released = false; send({type:'control',action:{...action, mouse_dx:finite(action.mouse_dx), mouse_dy:finite(action.mouse_dy), yaw_delta:finite(action.yaw_delta), pitch_delta:finite(action.pitch_delta)}}); action.mouse_dx=action.mouse_dy=action.yaw_delta=action.pitch_delta=0; action.emergency_stop=false; };
+  function updateDriver() {
+    const holder = token ? controllerId : state.driver;
+    $('driver').textContent = token ? `You (${controllerId})` : holder ? `${holder} is driving` : 'No driver';
+    $('take-control').disabled = Boolean(token || holder);
+    $('release-control').disabled = !token;
+    $('target').disabled = !token;
+    for (const query of ['[data-record]', '[data-label]', '[data-imitation]']) document.querySelectorAll(query).forEach(button => { button.disabled = !token; });
+    document.querySelectorAll('[data-drive]').forEach(button => { button.disabled = Boolean(!token && holder); });
+    $('gamemode-toggle').disabled = !token || !state.gamemode_switch || !state.gamemode;
+  }
+  function loseControl() {
+    token = null; pendingControl = null; armed = false; capturePending = false; directAction = null; clearAction();
+    if (document.pointerLockElement === overlay) document.exitPointerLock?.();
+    updateDriver();
+  }
+  const release = (emergency = false) => {
+    emergencyLatched = emergency;
+    if (emergency) send({type:'emergency_stop'}); else if (token) send({type:'release'});
+    loseControl();
+  };
+  function requestControl(onGranted) {
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    if (token) { onGranted(); return; }
+    const waiting = Boolean(pendingControl); pendingControl = onGranted;
+    if (!waiting) send({type:'acquire'});
+  }
+  const sendControl = () => { if(!token)return; if(directAction){if(Date.now()<directUntil){send({type:'control',action:{...directAction}});directAction.yaw_delta=directAction.pitch_delta=0;return;}send({type:'control',action:{...emptyAction()}});directAction=null;return;} if (!active()) return; send({type:'control',action:{...action, mouse_dx:finite(action.mouse_dx), mouse_dy:finite(action.mouse_dy), yaw_delta:finite(action.yaw_delta), pitch_delta:finite(action.pitch_delta)}}); action.mouse_dx=action.mouse_dy=action.yaw_delta=action.pitch_delta=0; action.emergency_stop=false; };
   const emptyAction = () => ({forward:false,back:false,left:false,right:false,jump:false,sprint:false,sneak:false,attack:false,use:false,hotbar:action.hotbar,mouse_dx:0,mouse_dy:0,yaw_delta:0,pitch_delta:0,emergency_stop:false,manual_abort:false});
-  const drive = (patch, duration=600) => { emergencyLatched=false; released=false; armed=false; send({type:'resume_control'}); directAction={...emptyAction(),...patch}; directUntil=Date.now()+duration; sendControl(); };
+  const drive = (patch, duration=600) => requestControl(() => { emergencyLatched=false; armed=false; clearAction(); send({type:'resume_control'}); directAction={...emptyAction(),...patch}; directUntil=Date.now()+duration; sendControl(); });
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${location.host}/control`);
-    socket.addEventListener('open', () => { released = false; $('connection').textContent = 'Connected'; $('connection').classList.add('live'); $('error').textContent = ''; });
-    socket.addEventListener('message', event => { try { const message = JSON.parse(event.data); if (message.type === 'state') updateState(message); else if (message.type === 'gamemode_result' && !message.ok) $('error').textContent = `Mode switch: ${({rate_limited:'wait a few seconds',not_configured:'host has not enabled mode switching',invalid_mode:'only creative or survival'})[message.error] ?? message.error}`; } catch (_) { $('error').textContent = 'Invalid state from bridge'; } });
-    socket.addEventListener('close', () => { armed = false; $('connection').textContent = 'Disconnected'; $('connection').classList.remove('live'); clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 1000); });
+    socket.addEventListener('open', () => { $('connection').textContent = 'Connected'; $('connection').classList.add('live'); $('error').textContent = ''; updateDriver(); });
+    socket.addEventListener('message', event => { try {
+      const message = JSON.parse(event.data);
+      if (message.type === 'state') updateState(message);
+      else if (message.type === 'lease_status') { controllerId = message.controller_id; state.driver = message.holder; if (token && message.holder !== controllerId) loseControl(); updateDriver(); }
+      else if (message.type === 'lease_granted') {
+        token = message.token; controllerId = message.controller_id;
+        const onGranted = pendingControl; pendingControl = null;
+        if (!onGranted) { release(); return; }
+        state.driver = controllerId; $('error').textContent = ''; onGranted(); updateDriver();
+      }
+      else if (message.type === 'lease_denied') { state.driver = message.holder; loseControl(); $('error').textContent = `Control held by ${message.holder}.`; }
+      else if (message.type === 'control_error' || (message.type === 'heartbeat_result' && !message.ok)) { loseControl(); $('error').textContent = 'Control expired. Take control to drive again.'; }
+      else if (message.type === 'gamemode_result' && !message.ok) $('error').textContent = `Mode switch: ${({rate_limited:'wait a few seconds',not_configured:'host has not enabled mode switching',invalid_mode:'only creative or survival'})[message.error] ?? message.error}`;
+    } catch (_) { $('error').textContent = 'Invalid state from bridge'; } });
+    socket.addEventListener('close', () => { state.driver = null; loseControl(); controllerId = null; $('connection').textContent = 'Disconnected'; $('connection').classList.remove('live'); clearTimeout(reconnectTimer); reconnectTimer = setTimeout(connect, 1000); });
     socket.addEventListener('error', () => { $('error').textContent = 'Control connection error'; });
   }
   function updateState(message) {
+    if (token && message.driver !== controllerId) loseControl();
     state = message; const o = message.observation || {}; const self = o.self || {}; const target = o.target || null; const configuredTarget=o.selector && o.selector.target_type; if(configuredTarget && $('target').value!==configuredTarget) $('target').value=configuredTarget;
     $('session').textContent = message.session_id || '—'; $('encounter').textContent = message.encounter_id || '—'; $('recording').textContent = message.recording_state || 'idle';
     const imitation=message.imitation||{}; $('imitation-status').textContent=`${imitation.state||'idle'}${imitation.frames?` · ${imitation.frames} frames`:''}`;
@@ -33,7 +73,7 @@ import { boxEdges, cameraPoint, project } from './projection.js';
     if (message.viewer_port && message.viewer_port !== viewerPort) { viewerPort = message.viewer_port; viewer.src = `${location.protocol}//${location.hostname}:${viewerPort}`; }
     { const mode = message.gamemode, btn = $('gamemode-toggle'); $('gamemode').textContent = mode ?? '—'; btn.dataset.next = mode === 'survival' ? 'creative' : 'survival'; btn.textContent = `Switch to ${btn.dataset.next}`; btn.disabled = !message.gamemode_switch || !mode; btn.title = message.gamemode_switch ? 'Switch only this bot between creative and survival' : 'Host has not enabled mode switching'; }
     if (message.viewer_error) $('error').textContent = `Viewer: ${message.viewer_error}`;
-    drawTarget(target, self);
+    updateDriver(); drawTarget(target, self);
   }
   function display(value, digits = 0) { return value == null || !Number.isFinite(Number(value)) ? '—' : Number(value).toFixed(digits); }
   function resize() { const rect = overlay.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; overlay.width = Math.max(1, Math.round(rect.width*dpr)); overlay.height = Math.max(1, Math.round(rect.height*dpr)); overlay.getContext('2d').setTransform(dpr,0,0,dpr,0,0); drawTarget(state.observation && state.observation.target, state.observation && state.observation.self); }
@@ -46,15 +86,19 @@ import { boxEdges, cameraPoint, project } from './projection.js';
   }
   function key(event, down) { if (down && event.code === 'Escape') { release(true); document.exitPointerLock?.(); return; } if (!active()) return; const mapped = keys.get(event.code); if (mapped) { event.preventDefault(); if (mapped === 'sprint') { if (down && !event.repeat) action.sprint = !action.sprint; } else action[mapped] = down; sendControl(); } if (down && /^Digit[1-9]$/.test(event.code)) { action.hotbar = Number(event.code.slice(-1))-1; event.preventDefault(); sendControl(); } }
   document.addEventListener('keydown', e => key(e,true)); document.addEventListener('keyup', e => key(e,false));
-  overlay.addEventListener('click', () => { if (socket?.readyState !== WebSocket.OPEN) return; emergencyLatched = false; capturePending = true; released = false; send({type:'resume_control'}); overlay.requestPointerLock?.(); $('start-hint').style.display='none'; });
+  overlay.addEventListener('click', () => { if (socket?.readyState !== WebSocket.OPEN) return; emergencyLatched = false; capturePending = true; overlay.requestPointerLock?.(); requestControl(() => { armed = document.pointerLockElement === overlay; send({type:'resume_control'}); sendControl(); }); $('start-hint').style.display='none'; });
   document.addEventListener('mousemove', e => { if (!active()) return; const width = Math.max(1, overlay.clientWidth), height = Math.max(1, overlay.clientHeight); const fovX = Math.PI/2, fovY = 2*Math.atan(Math.tan(fovX/2)/(width/height)); action.mouse_dx += finite(e.movementX); action.mouse_dy += finite(e.movementY); action.yaw_delta -= finite(e.movementX) * fovX / width; action.pitch_delta -= finite(e.movementY) * fovY / height; });
   overlay.addEventListener('mousedown', e => { if (!active()) return; e.preventDefault(); if (e.button === 0) action.attack=true; if (e.button === 2) action.use=true; sendControl(); });
   overlay.addEventListener('mouseup', e => { if (!active()) return; if (e.button === 0) action.attack=false; if (e.button === 2) action.use=false; sendControl(); }); overlay.addEventListener('wheel', e => { if (!active()) return; action.hotbar = Math.max(0, Math.min(8, action.hotbar + (e.deltaY > 0 ? 1 : -1))); e.preventDefault(); sendControl(); }); overlay.addEventListener('contextmenu', e => e.preventDefault());
-  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === overlay) { capturePending = false; armed = true; released = false; } else if (!emergencyLatched) { capturePending = false; release(); } }); window.addEventListener('blur', () => { capturePending = false; release(); }); document.addEventListener('visibilitychange', () => { if (document.hidden) { capturePending = false; release(); } });
+  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === overlay) { capturePending = false; armed = Boolean(token); } else if (!emergencyLatched) release(); }); document.addEventListener('pointerlockerror', () => release()); window.addEventListener('blur', () => release()); document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+  $('take-control').addEventListener('click', () => requestControl(() => { emergencyLatched = false; send({type:'resume_control'}); }));
+  $('release-control').addEventListener('click', () => release());
+  $('emergency-stop').addEventListener('click', () => release(true));
   $('target').addEventListener('change', () => send({type:'target', mob_type:$('target').value})); document.querySelectorAll('[data-record]').forEach(button => button.addEventListener('click', () => send({type:'record',command:button.dataset.record}))); document.querySelectorAll('[data-label]').forEach(button => button.addEventListener('click', () => send({type:'label',label:button.dataset.label})));
   const drives={forward:[{forward:true,sprint:true},800],back:[{back:true},600],left:[{left:true},600],right:[{right:true},600],shield:[{use:true},800],attack:[{attack:true},180],jump:[{forward:true,jump:true},350],'turn-left':[{yaw_delta:Math.PI/15},120],'turn-right':[{yaw_delta:-Math.PI/15},120]}; document.querySelectorAll('[data-drive]').forEach(button=>button.addEventListener('click',()=>{const [patch,duration]=drives[button.dataset.drive];drive(patch,duration);}));
   document.querySelectorAll('[data-imitation]').forEach(button=>button.addEventListener('click',()=>send({type:'imitation',command:button.dataset.imitation})));
   $('gamemode-toggle').addEventListener('click', () => { const btn = $('gamemode-toggle'); if (btn.disabled) return; btn.disabled = true; send({type:'setGamemode', mode: btn.dataset.next}); });
   setInterval(sendControl, 100);
+  setInterval(() => { if (token) send({type:'heartbeat'}); }, 1000);
   new ResizeObserver(resize).observe(overlay); window.addEventListener('resize', resize); connect();
 })();

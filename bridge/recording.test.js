@@ -151,12 +151,13 @@ test('controller identity follows supplied lease holders, reconnects, and overri
   assert.equal(checked.status, 0, checked.stderr);
 });
 
-test('runtime row supplies bot/configured identity and an explicit unknown R1 placeholder', async (t) => {
+test('runtime metadata and rows use connected/configured identity and unknown controller without a lease', async (t) => {
   const { createRuntime } = await import('./server.js');
   for (const [username, expected] of [['ConnectedBot', 'ConnectedBot'], [undefined, 'ConfiguredBot']]) {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent37-runtime-recording-'));
     const runtime = await createRuntime({ bot: { username }, username: 'ConfiguredBot', dataDir, session: 's', webPort: 0 });
     try {
+      assert.equal(metadata(runtime.recorder).agent_name, expected);
       const rowWritten = new Promise((resolve) => {
         const row = runtime.recorder.row.bind(runtime.recorder);
         runtime.recorder.row = (...args) => { const result = row(...args); if (result) resolve(); return result; };
@@ -175,5 +176,20 @@ test('runtime row supplies bot/configured identity and an explicit unknown R1 pl
       runtime.close(); await closed;
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
+  }
+});
+
+test('configured/connected identity initializes a session and persists when row identity is omitted', t => {
+  for (const [options, expected] of [
+    [{ agentName: 'ConnectedBot', configuredUsername: 'ConfiguredBot' }, 'ConnectedBot'],
+    [{ agentName: ' ', configuredUsername: 'ConfiguredBot' }, 'ConfiguredBot'],
+    [{ configuredUsername: '' }, null],
+  ]) {
+    const recorder = recording(t, options);
+    assert.equal(metadata(recorder).agent_name, expected);
+    const originalSession = recorder.sessionDir;
+    recorder.start(); recorder.row(...Object.values(sample()), 123); recorder.stop();
+    assert.equal(rows(recorder)[0].agent_name, expected);
+    assert.equal(recorder.sessionDir, originalSession);
   }
 });

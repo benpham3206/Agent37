@@ -19,7 +19,7 @@ function checkText(t, text) {
 function bad(result, pattern) { assert.equal(result.status, 1, result.stdout + result.stderr); assert.match(result.stderr, pattern); assert.doesNotMatch(result.stdout, /OK/); }
 
 test('CLI dispatches v1 and v2 fixtures and prints OK <version> <row count>', () => {
-  for (const [name, expected] of [['v1', 'OK 1 1\n'], ['v2-unknown', 'OK 2 1\n'], ['v2-human', 'OK 2 2\n']]) {
+  for (const [name, expected] of [['v1', 'OK 1 1\n'], ['v2-unknown', 'OK 2 1\n'], ['v2-human', 'OK 2 2\n'], ['v2-takeover', 'OK 2 5\n']]) {
     const result = check(fixturePath(name));
     assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout, expected); assert.equal(result.stderr, '');
   }

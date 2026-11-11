@@ -22,6 +22,9 @@ label { display: block; color: #aebdcc; } select { width: 100%; margin-top: 6px;
 button { padding: 7px 8px; border: 1px solid #465464; border-radius: 4px; background: #242e39; color: inherit; cursor:pointer; } button:hover { background:#344353; } button:active { background:#48627c; }
 .drive { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin:0 0 12px; }
 .drive span { grid-column:1/-1; color:#aebdcc; }
+.driver { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px; }
+.driver span, .driver button:last-child { grid-column:1/-1; }
+.driver b { display:inline; } button:disabled { opacity:.5; cursor:not-allowed; }
 .drive button { min-width:0; padding:6px 3px; font-size:12px; }
 .imitation { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 12px; padding:8px; border:1px solid #38516a; border-radius:4px; background:#111923; }
 .imitation span { color:#aebdcc; }
