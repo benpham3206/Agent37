@@ -1,0 +1,25 @@
+{
+  "name": "crafting.craft_wooden_pickaxe",
+  "version": 1,
+  "implementation": { "type": "code", "artifact": "index.js", "entry_point": "run" },
+  "requirements": {
+    "description": "Craft one wooden_pickaxe from logs in inventory: logs to planks, planks to sticks, a crafting table, then the pickaxe. Uses a crafting table within 4 blocks if one is observed, otherwise crafts one and places it on solid ground beside the bot. Uses only the bridge craft, equip and interact actions through the arbiter, never GUI clicks. Recipes come from minecraft-data 1.21.1 (recipe.js). Needs 3 logs of one wood type (or matching planks), a free spot with solid ground next to the bot, observation.terrain and observation.facts.nearest_blocks.",
+    "input": {}
+  },
+  "success_check": {
+    "time_limit_ms": 10000,
+    "condition": { "path": "inventory.wooden_pickaxe", "increase_by": 1 },
+    "failure_conditions": ["death", "execution_error", "human_takeover", "requirement_unmet"]
+  },
+  "reset_steps": [
+    { "command": "tp {username} 0.5 64 0.5", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "fill -5 63 -5 5 66 5 minecraft:air replace minecraft:crafting_table", "verify": { "path": "self.position", "equals": { "x": 0.5, "y": 64, "z": 0.5 } } },
+    { "command": "clear {username}", "verify": { "path": "inventory.wooden_pickaxe", "equals": 0 } },
+    { "command": "give {username} minecraft:oak_log 3", "verify": { "path": "inventory.oak_log", "equals": 3 } }
+  ],
+  "evaluation": {
+    "status": "untested",
+    "note": "No live trials yet. Run node eval/run.mjs --skill crafting.craft_wooden_pickaxe --version 1 --trials 20 --live in the approved test world and paste its evaluation block here. Activation needs 16 of 20.",
+    "baseline": null
+  }
+}
