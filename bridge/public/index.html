@@ -17,6 +17,11 @@
     </section>
     <aside class="panel">
       <header><h1>Combat teacher</h1><span class="header-badges"><span id="hitboxes" class="badge hitboxes">Hitboxes ON</span><span id="arbiter" class="badge">idle</span></span></header>
+      <div class="driver" aria-label="Driver control">
+        <span>Driver: <b id="driver" role="status">No driver</b></span>
+        <button id="take-control">Take control</button><button id="release-control" disabled>Release</button>
+        <button id="emergency-stop">Emergency stop</button>
+      </div>
       <label>Target <select id="target"><option>zombie</option><option>skeleton</option><option>enderman</option><option>blaze</option><option>phantom</option><option value="player">6ento (teacher-only sparring)</option><option>other</option></select></label>
       <div class="stats"><div>HP <b id="health">—</b></div><div>Target <b id="target-health">—</b></div><div>Distance <b id="distance">—</b></div><div>Tracked <b id="tracked">no</b></div><div>LOS / in view <b id="los">—</b></div><div>Incoming <b id="incoming">quiet</b></div><div>Last hit <b id="last-hit">—</b></div><div>State <b id="recording">idle</b></div></div>
       <div class="drive" aria-label="Accessible teacher controls">
