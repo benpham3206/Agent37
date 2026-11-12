@@ -9,6 +9,7 @@
     "eval": "node eval/run.mjs",
     "bench:latency": "node bench/latency.mjs",
     "bench:advancements": "node bench/advancements.mjs",
+    "bench:skills": "node bench/skills.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
